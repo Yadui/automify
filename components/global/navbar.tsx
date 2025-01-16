@@ -27,7 +27,7 @@ const Navbar = async (props: Props) => {
             <Link href="#">Products</Link>
           </li>
           <li>
-            <Link href="#">Pricing</Link>
+            <Link href="">Pricing</Link>
           </li>
           <li>
             <Link href="#">Clients</Link>

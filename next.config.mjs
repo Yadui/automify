@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true, // Enables the App Router
+  images: {
+    domains: ["img.clerk.com", "ucarecdn.com"], // Add img.clerk.com to the list of allowed domains
   },
 };
 // next.config.js

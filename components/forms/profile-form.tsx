@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,12 +24,13 @@ type Props = {
 
 const ProfileForm = ({ user, onUpdate }: Props) => {
   const [isLoading, setIsLoading] = useState(false);
+
   const form = useForm<z.infer<typeof EditUserProfileSchema>>({
     mode: "onChange",
     resolver: zodResolver(EditUserProfileSchema),
     defaultValues: {
-      name: user.name,
-      email: user.email,
+      name: user?.name || "",
+      email: user?.email || "",
     },
   });
 
@@ -41,9 +42,20 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
     setIsLoading(false);
   };
 
+  // Reset form when `user` changes and ensure `user` is defined
   useEffect(() => {
-    form.reset({ name: user.name, email: user.email });
+    if (user) {
+      form.reset({
+        name: user.name,
+        email: user.email,
+      });
+    }
   }, [user]);
+
+  // Render a loading state if `user` is null or undefined
+  // if (!user) {
+  //   return <div>Loading...</div>;
+  // }
 
   return (
     <Form {...form}>
@@ -52,8 +64,8 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
         onSubmit={form.handleSubmit(handleSubmit)}
       >
         <FormField
-          disabled={isLoading}
-          control={form.control}
+          disabled={isLoading} // Disable form fields when loading
+          control={form.control} // Pass control to the form field
           name="name"
           render={({ field }) => (
             <FormItem>
