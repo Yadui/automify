@@ -26,9 +26,9 @@ import { toast } from "sonner";
 import { usePathname } from "next/navigation";
 import { v4 } from "uuid";
 import { EditorCanvasDefaultCardTypes } from "@/lib/constant";
-import { onGetNodesEdges } from "../../../_actions/workflow-connections";
-import EditorCanvasSidebar from "./editor-canvas-sidebar";
 import FlowInstance from "./flow-instance";
+import EditorCanvasSidebar from "./editor-canvas-sidebar";
+import { onGetNodesEdges } from "../../../_actions/workflow-connections";
 
 type Props = {};
 
@@ -115,7 +115,7 @@ const EditorCanvas = (props: Props) => {
         },
       };
       //@ts-ignore
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => nds.concat(newNode)); // setNodes((nds) => [...nds, newNode])
     },
     [reactFlowInstance, state]
   );

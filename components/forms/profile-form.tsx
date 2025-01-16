@@ -19,7 +19,7 @@ import { Loader2 } from "lucide-react";
 
 type Props = {
   user: any;
-  onUpdate?: any;
+  onUpdate: any;
 };
 
 const ProfileForm = ({ user, onUpdate }: Props) => {
@@ -38,24 +38,23 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
     values: z.infer<typeof EditUserProfileSchema>
   ) => {
     setIsLoading(true);
-    await onUpdate(values.name);
-    setIsLoading(false);
+    try {
+      await onUpdate?.(values.name);
+    } catch (error) {
+      console.error("Failed to update user:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Reset form when `user` changes and ensure `user` is defined
   useEffect(() => {
     if (user) {
       form.reset({
-        name: user.name,
-        email: user.email,
+        name: user.name || "",
+        email: user.email || "",
       });
     }
-  }, [user]);
-
-  // Render a loading state if `user` is null or undefined
-  // if (!user) {
-  //   return <div>Loading...</div>;
-  // }
+  }, [user, form]);
 
   return (
     <Form {...form}>
@@ -64,14 +63,13 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
         onSubmit={form.handleSubmit(handleSubmit)}
       >
         <FormField
-          disabled={isLoading} // Disable form fields when loading
-          control={form.control} // Pass control to the form field
+          control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-lg">User full name</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Name" />
+                <Input {...field} placeholder="Name" disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -86,9 +84,9 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
               <FormControl>
                 <Input
                   {...field}
-                  disabled={true}
                   placeholder="Email"
                   type="email"
+                  disabled={true}
                 />
               </FormControl>
               <FormMessage />
@@ -97,7 +95,8 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
         />
         <Button
           type="submit"
-          className="self-start hover:bg-[#2F006B] hover:text-white "
+          className="self-start hover:bg-[#2F006B] hover:text-white"
+          disabled={isLoading} // Disable button while loading
         >
           {isLoading ? (
             <>
