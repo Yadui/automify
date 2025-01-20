@@ -16,8 +16,6 @@ import {
 import {
   fetchBotSlackChannels,
   onConnections,
-  // fetchBotSlackChannels,
-  // onConnections,
   onDragStart,
 } from "@/lib/editor-utils";
 import EditorCanvasIconHelper from "./editor-canvas-card-icon-helper";
@@ -92,7 +90,6 @@ const EditorCanvasSidebar = ({ nodes }: Props) => {
           <div className="px-2 py-4 text-center text-xl font-bold">
             {state.editor.selectedNode.data.title}
           </div>
-
           <Accordion type="multiple">
             <AccordionItem value="Options" className="border-y-[1px] px-2">
               <AccordionTrigger className="!no-underline">

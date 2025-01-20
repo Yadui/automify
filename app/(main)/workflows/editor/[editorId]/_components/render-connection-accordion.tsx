@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-// import ConnectionCard from "@/app/(main)/(pages)/connections/_components/connection-card";
+import ConnectionCard from "@/app/(main)/connections/_components/connection-card";
 import { AccordionContent } from "@/components/ui/accordion";
 import MultipleSelector from "@/components/ui/multiple-select";
 import { Connection } from "@/lib/types";
@@ -82,13 +82,13 @@ const RenderConnectionAccordion = ({
     <AccordionContent key={title}>
       {state.editor.selectedNode.data.title === title && (
         <>
-          {/* <ConnectionCard
+          <ConnectionCard
             title={title}
             icon={image}
             description={description}
             type={title}
             connected={{ [title]: isConnected }}
-          /> */}
+          />
           {slackSpecial && isConnected && (
             <div className="p-6">
               {slackChannels?.length ? (

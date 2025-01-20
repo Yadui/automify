@@ -1,4 +1,3 @@
-//pages.tsx
 import { CONNECTIONS } from "@/lib/constant";
 import React from "react";
 import ConnectionCard from "./_components/connection-card";
@@ -6,7 +5,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { onDiscordConnect } from "./_actions/discord-connections";
 import { onNotionConnect } from "./_actions/notion-connection";
 import { onSlackConnect } from "./_actions/slack-connection";
-
 import { getUserData } from "./_actions/get-user";
 
 type Props = {

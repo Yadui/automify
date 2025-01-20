@@ -1,12 +1,10 @@
-//google-connection.tsx
-// WIP: connection to google drive
-import { Clerk } from "@clerk/clerk-sdk";
+"use server";
+import { createClerkClient } from "@clerk/clerk-sdk-node";
 import { auth } from "@clerk/nextjs/server";
 import { google } from "googleapis";
 
 export const getFileMetaData = async () => {
   "use server";
-
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -18,21 +16,15 @@ export const getFileMetaData = async () => {
   if (!userId) {
     return { message: "User not found" };
   }
-
-  const clerk = new Clerk({
-    apiKey: process.env.CLERK_SECRET_KEY, // Ensure your Clerk API Key is set in .env
+  const clerkClient = createClerkClient({
+    secretKey: process.env.CLERK_SECRET_KEY,
   });
-
-  const clerkResponse = await clerk.users.getUserOauthAccessToken(
+  const clerkResponse = await clerkClient.users.getUserOauthAccessToken(
     userId,
     "oauth_google"
   );
 
-  if (!clerkResponse || clerkResponse.length === 0) {
-    return { message: "No OAuth tokens found for the user." };
-  }
-
-  const accessToken = clerkResponse[0].token;
+  const accessToken = clerkResponse.data[0].token;
 
   oauth2Client.setCredentials({
     access_token: accessToken,
@@ -41,5 +33,7 @@ export const getFileMetaData = async () => {
   const drive = google.drive({ version: "v3", auth: oauth2Client });
   const response = await drive.files.list();
 
-  return response?.data || { message: "No files found." };
+  if (response) {
+    return response.data;
+  }
 };

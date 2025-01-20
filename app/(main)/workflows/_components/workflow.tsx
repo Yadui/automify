@@ -1,6 +1,6 @@
 "use client";
-import React from "react";
 
+import React, { useState } from "react";
 import {
   Card,
   CardDescription,
@@ -22,16 +22,25 @@ type Props = {
 };
 
 const Workflow = ({ description, id, name, publish }: Props) => {
-  const onPublishFlow = async (event: any) => {
-    const response = await onFlowPublish(
-      id,
-      event.target.ariaChecked === "false"
-    );
-    if (response) toast.message(response);
+  // Manage local state for `isPublished`
+  const [isPublished, setIsPublished] = useState<boolean>(publish ?? false);
+
+  const handlePublishChange = async (isChecked: boolean) => {
+    const response = await onFlowPublish(id, isChecked);
+
+    if (response) {
+      toast.message(response);
+
+      // Update the state based on the success response
+      setIsPublished(isChecked);
+    } else {
+      // Optionally revert the toggle if the operation failed
+      toast.error("Failed to update the workflow state");
+    }
   };
 
   return (
-    <Card className="flex w-full items-center justify-between">
+    <Card className="flex w-full items-center justify-between gap-4">
       <CardHeader className="flex flex-col gap-4">
         <Link href={`/workflows/editor/${id}`}>
           <div className="flex flex-row gap-2">
@@ -44,33 +53,40 @@ const Workflow = ({ description, id, name, publish }: Props) => {
             />
             <Image
               src="/notion.png"
-              alt="Google Drive"
+              alt="Notion"
               height={30}
               width={30}
               className="object-contain"
             />
             <Image
               src="/discord.png"
-              alt="Google Drive"
+              alt="Discord"
+              height={30}
+              width={30}
+              className="object-contain"
+            />
+            <Image
+              src="/slack.png"
+              alt="Slack"
               height={30}
               width={30}
               className="object-contain"
             />
           </div>
-          <div className="">
+          <div>
             <CardTitle className="text-lg">{name}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </div>
         </Link>
       </CardHeader>
       <div className="flex flex-col items-center gap-2 p-4">
-        <Label htmlFor="airplane-mode" className="text-muted-foreground">
-          {publish! ? "On" : "Off"}
+        <Label htmlFor={`switch-${id}`} className="text-muted-foreground">
+          {isPublished ? "On" : "Off"}
         </Label>
         <Switch
-          id="airplane-mode"
-          onClick={onPublishFlow}
-          defaultChecked={publish!}
+          id={`switch-${id}`} // Unique ID for accessibility
+          onCheckedChange={handlePublishChange} // Handles toggle changes
+          checked={isPublished} // Reflects the current state
         />
       </div>
     </Card>
