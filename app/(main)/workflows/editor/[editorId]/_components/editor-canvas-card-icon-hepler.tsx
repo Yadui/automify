@@ -8,6 +8,7 @@ import {
   HardDrive,
   Mail,
   MousePointerClickIcon,
+  Slack,
   Timer,
   Webhook,
   Zap,
@@ -25,7 +26,7 @@ const EditorCanvasIconHelper = ({ type }: Props) => {
     case "AI":
       return <CircuitBoard className="flex-shrink-0" size={30} />;
     case "Slack":
-      return <Zap className="flex-shrink-0" size={30} />;
+      return <Slack className="flex-shrink-0" size={30} />;
     case "Google Drive":
       return <HardDrive className="flex-shrink-0" size={30} />;
     case "Notion":

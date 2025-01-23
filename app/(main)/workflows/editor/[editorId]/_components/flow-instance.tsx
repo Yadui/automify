@@ -9,16 +9,28 @@ import {
 } from "../_actions/workflow-connections";
 import { toast } from "sonner";
 
+interface NodeConnection {
+  discordNode: {
+    content: string;
+    webhookURL: string;
+  };
+  slackNode: {
+    slackAccessToken: string;
+    content: string;
+  };
+  // Add other node types as needed
+}
+
 type Props = {
   children: React.ReactNode;
   edges: any[];
   nodes: any[];
+  nodeConnection?: NodeConnection;
 };
 
-const FlowInstance = ({ children, edges, nodes }: Props) => {
+const FlowInstance = ({ children, edges, nodes, nodeConnection }: Props) => {
   const pathname = usePathname();
   const [isFlow, setIsFlow] = useState([]);
-  const { nodeConnection } = useNodeConnections();
 
   const onFlowAutomation = useCallback(async () => {
     const flow = await onCreateNodesEdges(
@@ -29,14 +41,14 @@ const FlowInstance = ({ children, edges, nodes }: Props) => {
     );
 
     if (flow) toast.message(flow.message);
-  }, [nodeConnection]);
+  }, [edges, isFlow, nodes, pathname]);
 
   const onPublishWorkflow = useCallback(async () => {
     const response = await onFlowPublish(pathname.split("/").pop()!, true);
     if (response) toast.message(response);
-  }, []);
+  }, [pathname]);
 
-  const onAutomateFlow = async () => {
+  const onAutomateFlow = useCallback(() => {
     const flows: any = [];
     const connectedEdges = edges.map((edge) => edge.target);
     connectedEdges.map((target) => {
@@ -48,11 +60,11 @@ const FlowInstance = ({ children, edges, nodes }: Props) => {
     });
 
     setIsFlow(flows);
-  };
+  }, [edges, nodes]);
 
   useEffect(() => {
     onAutomateFlow();
-  }, [edges]);
+  }, [onAutomateFlow]);
 
   return (
     <div className="flex flex-col gap-2">

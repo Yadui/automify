@@ -1,12 +1,10 @@
 import ProfileForm from "@/components/forms/profile-form";
 import React from "react";
 import ProfilePicture from "./_components/profile-picture";
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 
-type Props = {};
-
-const Settings = async (props: Props) => {
+const Settings = async () => {
   const authUser = await currentUser();
   if (!authUser) return null;
 
@@ -24,19 +22,17 @@ const Settings = async (props: Props) => {
     return response;
   };
 
-  const uploadProfileImage = async (image: string) => {
+  const uploadProfileImage = async (file: File) => {
     "use server";
-    const id = authUser.id;
-    const response = await db.user.update({
-      where: {
-        clerkId: id,
-      },
-      data: {
-        profileImage: image,
-      },
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
     });
 
-    return response;
+    return response.json();
   };
 
   const updateUserInfo = async (name: string) => {

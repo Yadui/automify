@@ -269,7 +269,7 @@ const MultipleSelector = React.forwardRef<
       };
 
       void exec();
-    }, [debouncedSearchTerm, open]);
+    }, [debouncedSearchTerm, open, groupBy, onSearch, triggerSearchOnFocus]);
 
     const CreatableItem = () => {
       if (!creatable) return undefined;

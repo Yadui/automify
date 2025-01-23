@@ -1,8 +1,8 @@
 import { google } from "googleapis";
-import { auth, clerkClient, createClerkClient } from "@clerk/nextjs/server";
+import { auth, createClerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 
 export async function GET() {
   const oauth2Client = new google.auth.OAuth2(

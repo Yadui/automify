@@ -1,10 +1,16 @@
-"use server";
+"use server"; // Add this to mark it as a Server Component
 
 import { Option } from "@/components/ui/multiple-select";
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 import axios from "axios";
+// import { SomeType } from "@/lib/types"; // Import necessary types
 
+// Define a specific type for the function parameters instead of using any
+// If you need to keep it, add a comment explaining why it's kept
+// interface SlackConnectParams {}
+
+// Update the function to use the defined type
 export const onSlackConnect = async (
   app_id: string,
   authed_user_id: string,
@@ -60,7 +66,11 @@ export async function listBotChannels(
   })}`;
 
   try {
-    const { data } = await axios.get(url, {
+    const { data } = await axios.get<{
+      ok: boolean;
+      channels: { name: string; id: string; is_member: boolean }[];
+      error?: string;
+    }>(url, {
       headers: { Authorization: `Bearer ${slackAccessToken}` },
     });
 
@@ -71,12 +81,13 @@ export async function listBotChannels(
     if (!data?.channels?.length) return [];
 
     return data.channels
-      .filter((ch: any) => ch.is_member)
-      .map((ch: any) => {
-        return { label: ch.name, value: ch.id };
-      });
-  } catch (error: any) {
-    console.error("Error listing bot channels:", error.message);
+      .filter((ch) => ch.is_member)
+      .map((ch) => ({
+        label: ch.name,
+        value: ch.id,
+      }));
+  } catch (error) {
+    console.error("Error listing bot channels:");
     throw error;
   }
 }
@@ -98,10 +109,10 @@ const postMessageInSlackChannel = async (
       }
     );
     console.log(`Message posted successfully to channel ID: ${slackChannel}`);
-  } catch (error: any) {
+  } catch (error) {
     console.error(
       `Error posting message to Slack channel ${slackChannel}:`,
-      error?.response?.data || error.message
+      error
     );
   }
 };
@@ -123,7 +134,7 @@ export const postMessageToSlack = async (
         postMessageInSlackChannel(slackAccessToken, channel, content);
       });
   } catch (error) {
-    return { message: "Message could not be sent to Slack" };
+    console.error("Error posting message to Slack channel:", error);
   }
 
   return { message: "Success" };

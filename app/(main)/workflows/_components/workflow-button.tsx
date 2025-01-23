@@ -7,10 +7,8 @@ import { useModal } from "@/providers/modal-provider";
 import { Plus } from "lucide-react";
 import React from "react";
 
-type Props = {};
-
-const WorkflowButton = (props: Props) => {
-  const { setOpen, setClose } = useModal();
+export default function WorkflowButton() {
+  const { setOpen } = useModal();
   const { credits } = useBilling();
 
   const handleClick = () => {
@@ -38,6 +36,4 @@ const WorkflowButton = (props: Props) => {
       <Plus />
     </Button>
   );
-};
-
-export default WorkflowButton;
+}

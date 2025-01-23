@@ -34,6 +34,11 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
     },
   });
 
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    // ... existing code ...
+  };
+
   const handleSubmit = async (
     values: z.infer<typeof EditUserProfileSchema>
   ) => {

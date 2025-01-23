@@ -7,9 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
 import { CardContainer } from "@/components/global/3d-card";
 
-type Props = {};
+// Define specific properties for the interface
+interface GoogleDriveFilesProps {
+  fileId: string; // Example property
+  // Add other properties as needed
+}
 
-const GoogleDriveFiles = (props: Props) => {
+const GoogleDriveFiles: React.FC<GoogleDriveFilesProps> = (props) => {
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
 

@@ -15,9 +15,11 @@ import { UserButton } from "@clerk/nextjs";
 import { useBilling } from "@/providers/billing-provider";
 import { onPaymentDetails } from "@/app/(main)/billing/_actions/payment-connection";
 
-type Props = {};
+interface InfoBarProps {
+  // Add actual props here or use 'object'/'unknown' if needed
+}
 
-const InfoBar = (props: Props) => {
+const InfoBar = (props: InfoBarProps) => {
   const { credits, tier, setCredits, setTier } = useBilling();
 
   const onGetPayment = async () => {
@@ -30,7 +32,7 @@ const InfoBar = (props: Props) => {
 
   useEffect(() => {
     onGetPayment();
-  }, []);
+  }, [onGetPayment]);
 
   return (
     <div className="flex flex-row justify-end gap-6 items-center px-4 py-4 w-full dark:bg-black ">

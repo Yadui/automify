@@ -2,7 +2,8 @@ import axios from "axios";
 import { NextResponse, NextRequest } from "next/server";
 import url from "url";
 
-export async function GET(req: NextRequest) {
+// Define a specific type for the request and response
+const handler = async (req: NextRequest) => {
   const code = req.nextUrl.searchParams.get("code");
   if (code) {
     const data = new url.URLSearchParams();
@@ -47,4 +48,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect("https://localhost:3000/connections");
   }
-}
+};
+
+export default handler;

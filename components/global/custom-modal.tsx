@@ -6,7 +6,6 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useModal } from "@/providers/modal-provider";
 

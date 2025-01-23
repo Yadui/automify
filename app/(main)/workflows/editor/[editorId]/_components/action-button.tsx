@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import { Option } from "./content-based-on-title";
-import { ConnectionProviderProps } from "@/providers/connection-provider";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { postContentToWebHook } from "@/app/(main)/connections/_actions/discord-connections";
@@ -9,9 +8,26 @@ import { toast } from "sonner";
 import { onCreateNewPageInDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { postMessageToSlack } from "@/app/(main)/connections/_actions/slack-connection";
 
+// Define specific types
+interface NodeConnection {
+  discordNode: {
+    content: string;
+    webhookURL: string;
+  };
+  slackNode: {
+    slackAccessToken: string;
+    content: string;
+  };
+  notionNode: {
+    accessToken: string;
+    databaseId: string;
+    content: string;
+  };
+}
+
 type Props = {
   currentService: string;
-  nodeConnection: ConnectionProviderProps;
+  nodeConnection: NodeConnection;
   channels?: Option[];
   setChannels?: (value: Option[]) => void;
 };
@@ -31,10 +47,7 @@ const ActionButton = ({
     );
 
     if (response.message == "success") {
-      nodeConnection.setDiscordNode((prev: any) => ({
-        ...prev,
-        content: "",
-      }));
+      nodeConnection.discordNode.content = "";
     }
   }, [nodeConnection.discordNode]);
 
@@ -50,10 +63,7 @@ const ActionButton = ({
       nodeConnection.notionNode.content
     );
     if (response) {
-      nodeConnection.setNotionNode((prev: any) => ({
-        ...prev,
-        content: "",
-      }));
+      nodeConnection.notionNode.content = "";
     }
   }, [nodeConnection.notionNode]);
 
@@ -65,15 +75,12 @@ const ActionButton = ({
     );
     if (response.message == "Success") {
       toast.success("Message sent successfully");
-      nodeConnection.setSlackNode((prev: any) => ({
-        ...prev,
-        content: "",
-      }));
+      nodeConnection.slackNode.content = "";
       setChannels!([]);
     } else {
       toast.error(response.message);
     }
-  }, [nodeConnection.slackNode, channels]);
+  }, [nodeConnection.slackNode, channels, setChannels]);
 
   const onCreateLocalNodeTempate = useCallback(async () => {
     if (currentService === "Discord") {
@@ -115,7 +122,7 @@ const ActionButton = ({
         toast.message(response);
       }
     }
-  }, [nodeConnection, channels]);
+  }, [nodeConnection, channels, currentService, pathname]);
 
   const renderActionButton = () => {
     switch (currentService) {

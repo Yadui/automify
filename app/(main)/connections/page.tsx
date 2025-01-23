@@ -7,11 +7,33 @@ import { onNotionConnect } from "./_actions/notion-connection";
 import { onSlackConnect } from "./_actions/slack-connection";
 import { getUserData } from "./_actions/get-user";
 
-type Props = {
-  searchParams?: { [key: string]: string | undefined };
-};
+// Define specific types for the props
+interface ConnectionProps {
+  webhook_id?: string;
+  webhook_name?: string;
+  webhook_url?: string;
+  guild_id?: string;
+  guild_name?: string;
+  channel_id?: string;
+  access_token?: string;
+  workspace_name?: string;
+  workspace_icon?: string;
+  workspace_id?: string;
+  database_id?: string;
+  app_id?: string;
+  authed_user_id?: string;
+  authed_user_token?: string;
+  slack_access_token?: string;
+  bot_user_id?: string;
+  team_id?: string;
+  team_name?: string;
+}
 
-const Connections = async (props: Props) => {
+interface ConnectionStatus {
+  [key: string]: boolean; // This allows any string key with a boolean value
+}
+
+const Connections = async (props: ConnectionProps) => {
   const {
     webhook_id,
     webhook_name,
@@ -31,32 +53,12 @@ const Connections = async (props: Props) => {
     bot_user_id,
     team_id,
     team_name,
-  } = props.searchParams ?? {
-    webhook_id: "",
-    webhook_name: "",
-    webhook_url: "",
-    guild_id: "",
-    guild_name: "",
-    channel_id: "",
-    access_token: "",
-    workspace_name: "",
-    workspace_icon: "",
-    workspace_id: "",
-    database_id: "",
-    app_id: "",
-    authed_user_id: "",
-    authed_user_token: "",
-    slack_access_token: "",
-    bot_user_id: "",
-    team_id: "",
-    team_name: "",
-  };
+  } = props;
 
   const user = await currentUser();
   if (!user) return null;
 
   const onUserConnections = async () => {
-    console.log(database_id);
     await onDiscordConnect(
       channel_id!,
       webhook_id!,
@@ -86,19 +88,22 @@ const Connections = async (props: Props) => {
       user.id
     );
 
-    const connections: any = {};
+    const connections: ConnectionStatus = {
+      Notion: false,
+      Slack: false,
+      "Google Drive": true, // Always true as per logic
+      Discord: false,
+    };
 
     const user_info = await getUserData(user.id);
 
-    //get user info with all connections
-    user_info?.connections.map((connection) => {
-      connections[connection.type] = true;
-      return (connections[connection.type] = true);
+    user_info?.connections.forEach((connection: { type: string }) => {
+      if (connection.type in connections) {
+        connections[connection.type as keyof ConnectionStatus] = true;
+      }
     });
 
-    // Google Drive connection will always be true
-    // as it is given access during the login process
-    return { ...connections, "Google Drive": true };
+    return connections;
   };
 
   const connections = await onUserConnections();

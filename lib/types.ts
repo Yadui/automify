@@ -1,4 +1,5 @@
 import { ConnectionProviderProps } from "@/providers/connection-provider";
+import { Metadata } from "next";
 import { z } from "zod";
 
 export const EditUserProfileSchema = z.object({
@@ -41,7 +42,7 @@ export type EditorCanvasCardType = {
   description: string;
   completed: boolean;
   current: boolean;
-  metadata: any;
+  metadata: Metadata;
   type: EditorCanvasTypes;
 };
 
@@ -84,7 +85,10 @@ export type EditorActions =
       };
     };
 
-export const nodeMapper: Record<string, string> = {
+export const nodeMapper: Record<
+  "Notion" | "Slack" | "Discord" | "Google Drive",
+  keyof ConnectionProviderProps
+> = {
   Notion: "notionNode",
   Slack: "slackNode",
   Discord: "discordNode",

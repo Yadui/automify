@@ -3,9 +3,10 @@ import React from "react";
 import { useBilling } from "@/providers/billing-provider";
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
 
-type Props = {};
+// Replace empty interface with proper type
 
-const MoreCredits = (props: Props) => {
+// Remove unused props parameter if not needed
+export default function MoreCredits() {
   const { credits } = useBilling();
   return credits !== "0" ? (
     <></>
@@ -16,6 +17,4 @@ const MoreCredits = (props: Props) => {
       </CardContent>
     </Card>
   );
-};
-
-export default MoreCredits;
+}

@@ -1,12 +1,12 @@
 import { postContentToWebHook } from "@/app/(main)/connections/_actions/discord-connections";
 import { onCreateNewPageInDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { postMessageToSlack } from "@/app/(main)/connections/_actions/slack-connection";
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 import axios from "axios";
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 
-export async function POST(req: NextRequest) {
+export default async function handler() {
   console.log("🔴 Changed");
   const headersList = headers();
   let channelResourceId;

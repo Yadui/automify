@@ -113,17 +113,13 @@ const ContentBasedOnTitle = ({
                 <div className="flex flex-col gap-4">
                   <CardDescription>Drive File</CardDescription>
                   <div className="flex flex-wrap gap-2">
-                    <GoogleFileDetails
-                      nodeConnection={nodeConnection}
-                      title={title}
-                      gFile={file}
-                    />
+                    <GoogleFileDetails file={file} />
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
-          {title === "Google Drive" && <GoogleDriveFiles />}
+          {title === "Google Drive" && <GoogleDriveFiles fileId="" />}
           <ActionButton
             currentService={title}
             nodeConnection={nodeConnection}

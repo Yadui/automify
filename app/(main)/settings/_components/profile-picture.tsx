@@ -6,18 +6,22 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
-type Props = {
+// Define a specific type for props instead of using any
+interface ProfilePictureProps {
   userImage: string | null;
-  onDelete?: any;
-  onUpload: any;
-};
+  onDelete?: () => void; // Optional delete handler
+  onUpload: (file: File) => Promise<void> | void; // Upload handler with file parameter
+}
 
-const ProfilePicture = ({ userImage, onDelete, onUpload }: Props) => {
+const ProfilePicture: React.FC<ProfilePictureProps> = ({
+  userImage,
+  onDelete,
+  onUpload,
+}) => {
   const router = useRouter();
 
   const onRemoveProfileImage = async () => {
-    const response = await onDelete();
-    if (response) {
+    if (onDelete) {
       router.refresh();
     }
   };
@@ -44,7 +48,18 @@ const ProfilePicture = ({ userImage, onDelete, onUpload }: Props) => {
             </Button>
           </>
         ) : (
-          <UploadCareButton onUpload={onUpload} />
+          <UploadCareButton
+            onUpload={(url: string) => {
+              // Convert URL to File object if needed
+              return fetch(url)
+                .then((res) => res.blob())
+                .then((blob) =>
+                  onUpload(
+                    new File([blob], "profile-image", { type: blob.type })
+                  )
+                );
+            }}
+          />
         )}
       </div>
     </div>

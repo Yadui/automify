@@ -7,7 +7,6 @@ import Navbar from "@/components/global/navbar";
 import { Button } from "@/components/ui/button";
 import { clients, products } from "@/lib/constant";
 import { CheckIcon } from "lucide-react";
-import Image from "next/image";
 import CustomCursor from "@/components/global/custom-cursor";
 
 export default function Home() {

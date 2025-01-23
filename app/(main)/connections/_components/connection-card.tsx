@@ -1,4 +1,3 @@
-import { ConnectionTypes } from "@/lib/types";
 import React from "react";
 import {
   Card,
@@ -9,22 +8,22 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-type Props = {
-  type: ConnectionTypes;
-  icon: string;
-  title: ConnectionTypes;
+// Define a specific type for props instead of using any
+interface ConnectionCardProps {
   description: string;
-  callback?: () => void;
-  connected: {} & any;
-};
+  title: string;
+  icon: string;
+  type: string;
+  connected: { [key: string]: boolean }; // Define the type for connected
+}
 
-const ConnectionCard = ({
+const ConnectionCard: React.FC<ConnectionCardProps> = ({
   description,
-  type,
-  icon,
   title,
+  icon,
+  type,
   connected,
-}: Props) => {
+}) => {
   return (
     <Card className="flex w-full items-center justify-between">
       <CardHeader className="flex flex-col gap-4">
@@ -50,15 +49,15 @@ const ConnectionCard = ({
         ) : (
           <Link
             href={
-              title == "Discord"
+              title === "Discord"
                 ? process.env.NEXT_PUBLIC_DISCORD_REDIRECT!
-                : title == "Notion"
+                : title === "Notion"
                 ? process.env.NEXT_PUBLIC_NOTION_AUTH_URL!
-                : title == "Slack"
+                : title === "Slack"
                 ? process.env.NEXT_PUBLIC_SLACK_REDIRECT!
                 : "#"
             }
-            className=" rounded-lg bg-primary p-2 font-bold text-primary-foreground"
+            className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
           >
             Connect
           </Link>

@@ -1,6 +1,6 @@
 "use server";
 import { Option } from "@/components/ui/multiple-select";
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 export const getGoogleListener = async () => {

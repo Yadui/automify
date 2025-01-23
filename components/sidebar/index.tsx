@@ -17,9 +17,11 @@ import { Separator } from "@radix-ui/react-separator";
 import { ModeToggle } from "../global/mode-toggle";
 // import { ModeToggle } from '../global/mode-toggle'
 
-type Props = {};
+interface SidebarProps {
+  // Add actual props here or use 'object'/'unknown' if needed
+}
 
-const MenuOptions = (props: Props) => {
+const MenuOptions = (props: SidebarProps) => {
   const pathName = usePathname();
 
   return (

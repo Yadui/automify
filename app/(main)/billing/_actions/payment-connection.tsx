@@ -1,6 +1,6 @@
 "use server";
 
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 
 export const onPaymentDetails = async () => {

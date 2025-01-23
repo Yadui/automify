@@ -8,40 +8,32 @@ type Props = {
   title: string;
   gFile: any;
 };
-const isGoogleFileNotEmpty = (file: any): boolean => {
+
+type GoogleFileType = {
+  kind: string;
+  name: string;
+  mimeType: string;
+  id?: string;
+};
+
+// Define specific properties for the file data type
+interface FileDataType {
+  id: string;
+  name: string;
+  mimeType: string;
+  // Add other properties as needed
+}
+
+const isGoogleFileNotEmpty = (file: GoogleFileType): boolean => {
   return Object.keys(file).length > 0 && file.kind !== "";
 };
 
-const GoogleFileDetails = ({ gFile, nodeConnection, title }: Props) => {
-  if (!isGoogleFileNotEmpty(gFile)) {
-    return null;
-  }
-
-  const details = ["kind", "name", "mimeType"];
-  if (title === "Google Drive") {
-    details.push("id");
-  }
-
+const GoogleFileDetails: React.FC<{ file: FileDataType }> = ({ file }) => {
+  // Use the file data here
   return (
-    <div className="flex flex-wrap gap-2">
-      <Card>
-        <CardContent className="flex flex-wrap gap-2 p-4">
-          {details.map((detail) => (
-            <div
-              key={detail}
-              onClick={() =>
-                onAddTemplate(nodeConnection, title, gFile[detail])
-              }
-              className="flex cursor-pointer gap-2 rounded-full bg-white px-3 py-1 text-gray-500"
-            >
-              {detail}:{" "}
-              <CardDescription className="text-black">
-                {gFile[detail]}
-              </CardDescription>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+    <div>
+      <h3>{file.name}</h3>
+      <p>{file.mimeType}</p>
     </div>
   );
 };

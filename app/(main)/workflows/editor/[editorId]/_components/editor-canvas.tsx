@@ -30,13 +30,11 @@ import FlowInstance from "./flow-instance";
 import EditorCanvasSidebar from "./editor-canvas-sidebar";
 import { onGetNodesEdges } from "../../../_actions/workflow-connections";
 
-type Props = {};
-
 const initialNodes: EditorNodeType[] = [];
 
 const initialEdges: { id: string; source: string; target: string }[] = [];
 
-const EditorCanvas = (props: Props) => {
+const EditorCanvas = () => {
   const { dispatch, state } = useEditor();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
@@ -45,14 +43,14 @@ const EditorCanvas = (props: Props) => {
     useState<ReactFlowInstance>();
   const pathname = usePathname();
 
-  const onDragOver = useCallback((event: any) => {
+  const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   }, []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      //@ts-ignore
+      //@ts-expect-error
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
     [setNodes]
@@ -60,7 +58,6 @@ const EditorCanvas = (props: Props) => {
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) =>
-      //@ts-ignore
       setEdges((eds) => applyEdgeChanges(changes, eds)),
     [setEdges]
   );
@@ -71,17 +68,12 @@ const EditorCanvas = (props: Props) => {
   );
 
   const onDrop = useCallback(
-    (event: any) => {
+    (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
 
-      const type: EditorCanvasCardType["type"] = event.dataTransfer.getData(
+      const type = event.dataTransfer.getData(
         "application/reactflow"
-      );
-
-      // check if the dropped element is valid
-      if (typeof type === "undefined" || !type) {
-        return;
-      }
+      ) as EditorCanvasCardType["type"];
 
       const triggerAlreadyExists = state.editor.elements.find(
         (node) => node.type === "Trigger"

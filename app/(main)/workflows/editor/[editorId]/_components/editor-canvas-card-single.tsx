@@ -2,7 +2,7 @@ import { EditorCanvasCardType } from "@/lib/types";
 import { useEditor } from "@/providers/editor-provider";
 import React, { useMemo } from "react";
 import { Position, useNodeId } from "reactflow";
-import EditorCanvasIconHelper from "./editor-canvas-card-icon-helper";
+import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
 import CustomHandle from "./custom-handle";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,8 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import clsx from "clsx";
-
-type Props = {};
 
 const EditorCanvasCardSingle = ({ data }: { data: EditorCanvasCardType }) => {
   const { dispatch, state } = useEditor();

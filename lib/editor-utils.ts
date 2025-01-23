@@ -16,9 +16,10 @@ import { getDiscordConnectionUrl } from "@/app/(main)/connections/_actions/disco
 import { getNotionDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { getNotionConnection } from "@/app/(main)/connections/_actions/notion-connection";
 import { getSlackConnection } from "@/app/(main)/connections/_actions/slack-connection";
+import { DiscordWebhook, Slack } from "@prisma/client";
 
 export const onDragStart = (
-  event: any,
+  event: React.DragEvent<HTMLDivElement>,
   nodeType: EditorCanvasCardType["type"]
 ) => {
   event.dataTransfer.setData("application/reactflow", nodeType);
@@ -29,7 +30,7 @@ export const onSlackContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setSlackNode((prev: any) => ({
+  nodeConnection.setSlackNode((prev: Slack) => ({
     ...prev,
     content: event.target.value,
   }));
@@ -39,7 +40,7 @@ export const onDiscordContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setDiscordNode((prev: any) => ({
+  nodeConnection.setDiscordNode((prev: DiscordWebhook) => ({
     ...prev,
     content: event.target.value,
   }));
