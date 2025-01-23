@@ -6,10 +6,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { id, email_addresses, first_name, image_url } = body?.data;
 
-    const email = email_addresses[0]?.email_address;
-    console.log("✅", body);
+    if (!id || !email_addresses?.[0]?.email_address) {
+      return new NextResponse("Missing required fields", { status: 400 });
+    }
 
-    await db.user.upsert({
+    const email = email_addresses[0]?.email_address;
+    console.log("✅ Webhook received:", { id, email });
+
+    await db.$connect();
+    console.log("✅ Database connected");
+
+    const user = await db.user.upsert({
       where: { clerkId: id },
       update: {
         email,
@@ -23,11 +30,17 @@ export async function POST(req: Request) {
         profileImage: image_url || "",
       },
     });
+
+    console.log("✅ User upserted:", user.id);
     return new NextResponse("User updated in database successfully", {
       status: 200,
     });
-  } catch (error) {
-    console.error("Error updating database:", error);
-    return new NextResponse("Error updating user in database", { status: 500 });
+  } catch (err) {
+    console.error("Error in webhook handler:", err);
+    return new NextResponse(`Error updating user in database`, {
+      status: 500,
+    });
+  } finally {
+    await db.$disconnect();
   }
 }

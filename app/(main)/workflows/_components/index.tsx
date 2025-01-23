@@ -9,7 +9,7 @@ interface WorkflowType {
   id: string; // Existing property
   name: string; // Add required properties
   description: string; // Add required properties
-  publish: boolean; // Add required properties
+  publish: boolean | null; // Update to allow null
   // Add other properties as needed
 }
 
