@@ -1,6 +1,4 @@
-import { InfiniteMovingCards } from "@/components/global/infinite-moving-cards";
 import { BackgroundLines } from "@/components/ui/background-lines";
-import { clients } from "@/lib/constant";
 import React from "react";
 
 const DashboardPage = () => {
