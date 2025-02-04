@@ -1,12 +1,22 @@
+import { InfiniteMovingCards } from "@/components/global/infinite-moving-cards";
+import { BackgroundLines } from "@/components/ui/background-lines";
+import { clients } from "@/lib/constant";
 import React from "react";
 
 const DashboardPage = () => {
   return (
-    <div className="flex flex-col gap-4 relative">
-      <h1 className="text-4xl sticky top-0 z-[10] p-6 bg-background/50 backdrop-blur-lg flex items-center border-b">
-        Dashboard
-      </h1>
-    </div>
+    <>
+      <div className="sticky top-10 z-[10] pt-10 flex items-center justify-between border-b bg-background/50 p-6 text-4xl backdrop-blur-lg">
+        <p>Dashboard</p>
+      </div>
+      <BackgroundLines className="z-1">
+        {
+          <div className="text-4xl flex items-center justify-center pt-96 z-[1]">
+            <p>Create automations here.</p>
+          </div>
+        }
+      </BackgroundLines>
+    </>
   );
 };
 

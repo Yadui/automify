@@ -1,7 +1,7 @@
 import React from "react";
 
 const Editor = () => {
-  return <div>Page</div>;
+  return <div className="pt-20">Page</div>;
 };
 
 export default Editor;

@@ -1,6 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
 
 export const onCreateNodesEdges = async (
   flowId: string,
@@ -24,6 +25,15 @@ export const onCreateNodesEdges = async (
 
 export const onFlowPublish = async (workflowId: string, state: boolean) => {
   console.log(state);
+  const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+  const user = await db.user.findUnique({
+    where: { clerkId: userId },
+    select: { credits: true },
+  });
   const published = await db.workflows.update({
     where: {
       id: workflowId,
@@ -32,7 +42,18 @@ export const onFlowPublish = async (workflowId: string, state: boolean) => {
       publish: state,
     },
   });
-
-  if (published.publish) return "Workflow published";
+  if (user === null) {
+    throw new Error("User not found");
+  }
+  if (published.publish) {
+    // Deduct credits only when publishing
+    if (user.credits !== "Unlimited") {
+      await db.user.update({
+        where: { clerkId: userId },
+        data: { credits: `${parseInt(user.credits!) - 1}` },
+      });
+    }
+    return "Workflow published";
+  }
   return "Workflow unpublished";
 };

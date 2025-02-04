@@ -71,7 +71,7 @@ export const LampContainer = ({
           <div className="absolute  w-40 h-[100%] right-0 bg-neutral-950  bottom-0 z-20 [mask-image:linear-gradient(to_left,white,transparent)]" />
           <div className="absolute  w-[100%] right-0 bg-neutral-950 h-40 bottom-0 z-20 [mask-image:linear-gradient(to_top,white,transparent)]" />
         </motion.div>
-        <div className="absolute top-1/2 h-48 w-full translate-y-12 scale-x-150 bg-neutral-950 blur-2xl"></div>
+        <div className="absolute top-1/2 h-48 w-[50rem] translate-y-12 scale-x-150 bg-neutral-950 blur-2xl"></div>
         <div className="absolute top-1/2 z-50 h-48 w-full bg-transparent opacity-10 backdrop-blur-md"></div>
         <div className="absolute inset-auto z-50 h-36 w-[28rem] -translate-y-1/2 rounded-full bg-neutral-500 opacity-50 blur-3xl"></div>
         <motion.div
@@ -86,22 +86,22 @@ export const LampContainer = ({
         ></motion.div>
         <motion.div
           initial={{ width: "15rem" }}
-          whileInView={{ width: "30rem" }}
+          whileInView={{ width: "50rem" }}
           transition={{
             delay: 0.3,
             duration: 0.8,
             ease: "easeInOut",
           }}
-          className="absolute inset-auto z-50 h-0.5 w-[30rem] -translate-y-[7rem] bg-neutral-400 "
+          className="absolute inset-auto z-50 h-0.5 w-[50rem] -translate-y-[7rem] bg-neutral-400 "
         ></motion.div>
 
-        <div className="w-[40rem] h-40 relative">
+        <div className="w-full h-40 relative -mx-8">
           <SparklesCore
             background="transparent"
             minSize={0.4}
             maxSize={1}
             particleDensity={1200}
-            className="w-full h-full"
+            className="w-[110%] h-full -ml-[5%]"
             particleColor="#FFFFFF"
           />
         </div>

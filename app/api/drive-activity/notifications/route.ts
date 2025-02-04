@@ -23,7 +23,11 @@ export default async function handler() {
       },
       select: { clerkId: true, credits: true },
     });
-    if ((user && parseInt(user.credits!) > 0) || user?.credits == "Unlimited") {
+    if (!user) {
+      return Response.json({ message: "User not found" }, { status: 404 });
+    }
+
+    if (parseInt(user.credits!) > 0 || user.credits == "Unlimited") {
       const workflow = await db.workflows.findMany({
         where: {
           userId: user.clerkId,
@@ -116,14 +120,12 @@ export default async function handler() {
             current++;
           }
 
-          await db.user.update({
-            where: {
-              clerkId: user.clerkId,
-            },
-            data: {
-              credits: `${parseInt(user.credits!) - 1}`,
-            },
-          });
+          if (user.credits !== "Unlimited") {
+            await db.user.update({
+              where: { clerkId: user.clerkId },
+              data: { credits: `${parseInt(user.credits!) - 1}` },
+            });
+          }
         });
         return Response.json(
           {

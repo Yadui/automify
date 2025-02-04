@@ -5,7 +5,7 @@ import EditorCanvas from "./_components/editor-canvas";
 
 const Page: React.FC = () => {
   return (
-    <div className="h-full">
+    <div className="h-full pt-20">
       <EditorProvider>
         <ConnectionsProvider>
           <EditorCanvas />
