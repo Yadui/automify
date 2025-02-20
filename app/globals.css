@@ -7,7 +7,10 @@
 *::after {
   box-sizing: border-box;
 }
-html {
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
   scroll-behavior: smooth;
 }
 *::-webkit-scrollbar {
@@ -75,4 +78,31 @@ html {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes borderGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+  25% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.9);
+  }
+  75% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.animate-border-glow {
+  animation: borderGlow 2s infinite linear;
 }

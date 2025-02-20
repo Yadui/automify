@@ -60,13 +60,22 @@ export const InfiniteMovingCards = ({
   };
   const getSpeed = () => {
     if (containerRef.current) {
+      let duration;
       if (speed === "fast") {
-        containerRef.current.style.setProperty("--animation-duration", "20s");
+        duration = "20s";
       } else if (speed === "normal") {
-        containerRef.current.style.setProperty("--animation-duration", "40s");
+        duration = "40s";
       } else {
-        containerRef.current.style.setProperty("--animation-duration", "80s");
+        duration = "80s";
       }
+
+      // Set a maximum speed duration
+      const maxDuration = "10s"; // Example maximum speed
+      if (parseFloat(duration) < parseFloat(maxDuration)) {
+        duration = maxDuration;
+      }
+
+      containerRef.current.style.setProperty("--animation-duration", duration);
     }
   };
   //   console.log(items);

@@ -9,16 +9,17 @@ export function LampComponent() {
     <LampContainer>
       <motion.h1
         initial={{ opacity: 0.5, y: 100 }}
-        whileInView={{ opacity: 1, y: 0 }}
+        whileInView={{ opacity: 1, y: -100 }}
         transition={{
           delay: 0.3,
           duration: 0.8,
           ease: "easeInOut",
         }}
-        className="mt-20 bg-gradient-to-br from-neutral-300 to-neutral-500 py-4 bg-clip-text text-center text-4xl font-medium tracking-tight text-transparent md:text-7xl"
+        className="mt-20 bg-gradient-to-br from-neutral-300 to-neutral-500 py-4 bg-clip-text text-center text-9xl sm:text-7xl font-medium tracking-tight text-transparent"
       >
-        Plans That
-        <br /> Fit You Best
+        Plans That Fit
+        <br />
+        <span className="underline decoration-neutral-500">You</span> Best
       </motion.h1>
     </LampContainer>
   );
@@ -34,7 +35,7 @@ export const LampContainer = ({
   return (
     <div
       className={cn(
-        "relative flex min-h-[800px] flex-col items-center justify-center overflow-hidden bg-neutral-950 rounded-md z-0 w-screen",
+        "relative flex min-h-[800px] flex-col items-center justify-center overflow-hidden bg-neutral-950 w-full rounded-md z-0 ",
         className
       )}
     >
@@ -71,7 +72,7 @@ export const LampContainer = ({
           <div className="absolute  w-40 h-[100%] right-0 bg-neutral-950  bottom-0 z-20 [mask-image:linear-gradient(to_left,white,transparent)]" />
           <div className="absolute  w-[100%] right-0 bg-neutral-950 h-40 bottom-0 z-20 [mask-image:linear-gradient(to_top,white,transparent)]" />
         </motion.div>
-        <div className="absolute top-1/2 h-48 w-[50rem] translate-y-12 scale-x-150 bg-neutral-950 blur-2xl"></div>
+        <div className="absolute top-1/2 h-48 w-full translate-y-12 scale-x-150 bg-neutral-950 blur-2xl"></div>
         <div className="absolute top-1/2 z-50 h-48 w-full bg-transparent opacity-10 backdrop-blur-md"></div>
         <div className="absolute inset-auto z-50 h-36 w-[28rem] -translate-y-1/2 rounded-full bg-neutral-500 opacity-50 blur-3xl"></div>
         <motion.div
@@ -86,22 +87,22 @@ export const LampContainer = ({
         ></motion.div>
         <motion.div
           initial={{ width: "15rem" }}
-          whileInView={{ width: "50rem" }}
+          whileInView={{ width: "30rem" }}
           transition={{
             delay: 0.3,
             duration: 0.8,
             ease: "easeInOut",
           }}
-          className="absolute inset-auto z-50 h-0.5 w-[50rem] -translate-y-[7rem] bg-neutral-400 "
+          className="absolute inset-auto z-50 h-0.5 w-[30rem] -translate-y-[7rem] bg-neutral-400 "
         ></motion.div>
 
-        <div className="w-full h-40 relative -mx-8">
+        <div className="w-[40rem] h-40 relative">
           <SparklesCore
             background="transparent"
             minSize={0.4}
             maxSize={1}
             particleDensity={1200}
-            className="w-[110%] h-full -ml-[5%]"
+            className="w-full h-full"
             particleColor="#FFFFFF"
           />
         </div>
