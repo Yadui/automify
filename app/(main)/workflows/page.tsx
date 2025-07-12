@@ -8,7 +8,7 @@ const WorkflowsPage = () => {
   // const { someProp } = props; // Example if you have props to use
 
   return (
-    <div className="flex flex-col relative top-20">
+    <div className="flex flex-col relative">
       <h1 className="text-4xl sticky  z-[10] p-6 bg-background/50 backdrop-blur-lg flex items-center border-b justify-between">
         Workflows
         <WorkflowButton />

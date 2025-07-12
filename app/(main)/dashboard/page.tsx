@@ -4,12 +4,13 @@ import React from "react";
 const DashboardPage = () => {
   return (
     <>
-      <div className="sticky top-10 z-[10] pt-10 flex items-center justify-between border-b bg-background/50 p-6 text-4xl backdrop-blur-lg">
+      <div className="relative z-5 w-auto max-h-screen pb-2 border-b text-4xl ">
         <p>Dashboard</p>
       </div>
-      <BackgroundLines className="z-1">
+      {/* TODO: create sample templates for users */}
+      <BackgroundLines className="relative z-1 overflow-hidden">
         {
-          <div className="text-4xl flex items-center justify-center pt-96 z-[1]">
+          <div className="text-4xl flex items-center justify-center text-center">
             <p>Create automations here.</p>
           </div>
         }

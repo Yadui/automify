@@ -103,7 +103,7 @@ export const menuOptions = [
 ];
 
 export const EditorCanvasDefaultCardTypes = {
-  Email: { description: "Send and email to a user", type: "Action" },
+  Email: { description: "Send an email to a user", type: "Action" },
   Condition: {
     description: "Boolean operator that creates different conditions lanes.",
     type: "Action",

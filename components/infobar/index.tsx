@@ -35,7 +35,10 @@ const InfoBar = (props: InfoBarProps) => {
   }, [onGetPayment]);
 
   return (
-    <div className="flex flex-row justify-end gap-6 items-center px-4 py-4 w-full dark:bg-black/40 backdrop-blur-lg fixed  right-0 z-[100] border-b bg-background/50 p-6 text">
+    <div
+      className="sticky flex flex-row justify-end gap-6 items-center py-4 w-a dark:bg-black/40 backdrop-blur-lg right-0  z-3 
+    border-b bg-background/50 p-6 text"
+    >
       <span className="flex items-center gap-2 font-bold">
         <p className="text-sm font-light text-gray-300">Credits</p>
         {tier == "Unlimited" ? (

@@ -27,16 +27,7 @@ const Navbar = async (props: NavbarProps) => {
             <Link href="#">Pricing</Link>
           </li>
           <li>
-            <Link href="#">Clients</Link>
-          </li>
-          <li>
             <Link href="#">Resources</Link>
-          </li>
-          <li>
-            <Link href="#">Documentation</Link>
-          </li>
-          <li>
-            <Link href="#">Enterprise</Link>
           </li>
         </ul>
       </nav>
@@ -50,7 +41,7 @@ const Navbar = async (props: NavbarProps) => {
             {user ? "Dashboard" : "Get Started"}
           </span>
         </Link>
-        {user ? <UserButton /> : null}
+        <UserButton />
         <MenuIcon className="md:hidden" />
       </aside>
     </header>
