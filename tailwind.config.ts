@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config = {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -24,7 +24,7 @@ const config = {
         pixelify: ['"Pixelify Sans Variable"', "sans-serif"],
       },
       colors: {
-        border: "hsl(var(--border))",
+        border: "hsl(0, 0%, 80%)",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",

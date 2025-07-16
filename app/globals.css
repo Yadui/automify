@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @import url("https://fonts.googleapis.com/css2?family=Bitcount+Grid+Double:wght@100..900&display=swap");
 
@@ -80,7 +78,7 @@ body {
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(0, 0%, 80%);
   }
   body {
     @apply bg-background text-foreground;
@@ -114,49 +112,52 @@ body {
   animation: borderGlow 2s infinite linear;
 }
 
-@theme inline {
-  --animate-orbit: orbit calc(var(--duration) * 1s) linear infinite;
+@layer base {
+  .theme {
+    --animate-orbit: orbit calc(var(--duration) * 1s) linear infinite;
 
-  @keyframes orbit {
-    0% {
-      transform: rotate(calc(var(--angle) * 1deg))
-        translateY(calc(var(--radius) * 1px)) rotate(calc(var(--angle) * -1deg));
+    @keyframes orbit {
+      0% {
+        transform: rotate(calc(var(--angle) * 1deg))
+          translateY(calc(var(--radius) * 1px))
+          rotate(calc(var(--angle) * -1deg));
+      }
+      100% {
+        transform: rotate(calc(var(--angle) * 1deg + 360deg))
+          translateY(calc(var(--radius) * 1px))
+          rotate(calc((var(--angle) * -1deg) - 360deg));
+      }
     }
-    100% {
-      transform: rotate(calc(var(--angle) * 1deg + 360deg))
-        translateY(calc(var(--radius) * 1px))
-        rotate(calc((var(--angle) * -1deg) - 360deg));
+    @keyframes marquee {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(calc(-100% - var(--gap)));
+      }
     }
-  }
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
+    @keyframes marquee-vertical {
+      from {
+        transform: translateY(0);
+      }
+      to {
+        transform: translateY(calc(-100% - var(--gap)));
+      }
     }
-    to {
-      transform: translateX(calc(-100% - var(--gap)));
-    }
-  }
-  @keyframes marquee-vertical {
-    from {
-      transform: translateY(0);
-    }
-    to {
-      transform: translateY(calc(-100% - var(--gap)));
-    }
-  }
-  @keyframes orbit {
-    0% {
-      transform: rotate(calc(var(--angle) * 1deg))
-        translateY(calc(var(--radius) * 1px)) rotate(calc(var(--angle) * -1deg));
-    }
-    100% {
-      transform: rotate(calc(var(--angle) * 1deg + 360deg))
-        translateY(calc(var(--radius) * 1px))
-        rotate(calc((var(--angle) * -1deg) - 360deg));
+    @keyframes orbit {
+      0% {
+        transform: rotate(calc(var(--angle) * 1deg))
+          translateY(calc(var(--radius) * 1px))
+          rotate(calc(var(--angle) * -1deg));
+      }
+      100% {
+        transform: rotate(calc(var(--angle) * 1deg + 360deg))
+          translateY(calc(var(--radius) * 1px))
+          rotate(calc((var(--angle) * -1deg) - 360deg));
+      }
     }
   }
 }
-
 .animate-orbit {
   animation: orbit calc(var(--duration) * 1s) linear infinite;
 }
