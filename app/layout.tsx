@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import ModalProvider from "@/providers/modal-provider";
 import { Toaster } from "sonner";
 import { BillingProvider } from "@/providers/billing-provider";
+import { ThemeClientWrapper } from "@/components/theme-client-provider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,19 +35,21 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <BillingProvider>
-              <ModalProvider>
-                {children}
-                <Toaster />
-              </ModalProvider>
-            </BillingProvider>
-          </ThemeProvider>
+          <ThemeClientWrapper>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <BillingProvider>
+                <ModalProvider>
+                  {children}
+                  <Toaster />
+                </ModalProvider>
+              </BillingProvider>
+            </ThemeProvider>
+          </ThemeClientWrapper>
         </body>
       </html>
     </ClerkProvider>

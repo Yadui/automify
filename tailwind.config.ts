@@ -24,7 +24,7 @@ const config = {
         pixelify: ['"Pixelify Sans Variable"', "sans-serif"],
       },
       colors: {
-        border: "hsl(0, 0%, 80%)",
+        border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
