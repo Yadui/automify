@@ -173,11 +173,8 @@ const EditorCanvas = () => {
   return (
     <ResizablePanelGroup direction="horizontal">
       <ResizablePanel defaultSize={70}>
-        <div className="flex h-full items-center justify-center">
-          <div
-            style={{ width: "100%", height: "100%", paddingBottom: "70px" }}
-            className="relative"
-          >
+        <div className="flex h-screen items-center justify-center">
+          <div style={{ width: "100%", height: "100%" }} className="relative">
             {isWorkFlowLoading ? (
               <div className="absolute flex h-full w-full items-center justify-center">
                 <svg

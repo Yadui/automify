@@ -54,13 +54,13 @@ const EditorCanvasSidebar = ({ nodes }: Props) => {
 
   return (
     <aside>
-      <Tabs defaultValue="actions" className="h-screen">
+      <Tabs defaultValue="actions" className="h-auto">
         <TabsList className="bg-transparent">
           <TabsTrigger value="actions">Actions</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <Separator />
-        <div className="h-[calc(100vh-180px)] overflow-y-auto pb-4">
+        <div className="h-[calc(100vh-180px)] overflow-y-auto box-border">
           <TabsContent value="actions" className="flex flex-col gap-4 p-4">
             {Object.entries(EditorCanvasDefaultCardTypes)
               .filter(([, cardType]) => {
