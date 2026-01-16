@@ -1,96 +1,105 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-// import { menuOptions } from '@/lib/constant'
+import { menuOptions } from "@/lib/constant";
 import clsx from "clsx";
-// import { Separator } from '@/components/ui/separator'
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CirclePlus,
   Database,
   GitBranch,
   LucideMousePointerClick,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
-import { menuOptions } from "@/lib/constant";
-import { Separator } from "@radix-ui/react-separator";
+import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "../global/mode-toggle";
-// import { ModeToggle } from '../global/mode-toggle'
 
-interface SidebarProps {
-  // Add actual props here or use 'object'/'unknown' if needed
-}
-
-const MenuOptions = (props: SidebarProps) => {
+const Sidebar = () => {
   const pathName = usePathname();
 
   return (
-    <nav className="dark:bg-black h-screen overflow-hidden justify-between flex items-center flex-col gap-10 py-6 px-4 w-20 z-1 ">
-      <span className="flex items-center justify-center rounded-full bg-muted p-2 cursor-pointer hover:transform:{rotateY(180deg)}">
-        <CirclePlus />
-      </span>
-      <div className="flex items-center justify-center flex-col gap-8 relative ">
-        <TooltipProvider>
-          {menuOptions.map((menuItem) => (
-            <ul key={menuItem.name}>
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger>
-                  <li>
-                    <Link
-                      href={menuItem.href}
-                      className={clsx(
-                        "group h-8 w-8 flex items-center justify-center  scale-[1.5] rounded-lg p-[3px]  cursor-pointer",
-                        {
-                          "dark:bg-[#2F006B] bg-[#EEE0FF] ":
-                            pathName === menuItem.href,
-                        }
-                      )}
+    <nav className="fixed left-4 top-1/2 -translate-y-1/2 h-[90vh] z-[50]">
+      <motion.div
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "circOut" }}
+        className={clsx(
+          "h-full flex flex-col items-center justify-between py-8 px-4",
+          "bg-black/40 backdrop-blur-2xl border border-neutral-800/50 rounded-[2.5rem]",
+          "shadow-[0px_0px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-500 w-20"
+        )}
+      >
+        <div className="flex flex-col items-center gap-12 w-full">
+          {/* Logo / Brand */}
+          <Link href="/dashboard" className="relative group">
+            <div className="absolute -inset-2 bg-gradient-to-r from-[#E2CBFF] to-[#D1B3FF] rounded-full blur opacity-0 group-hover:opacity-40 transition-opacity" />
+            <div className="relative p-3 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-[#E2CBFF]" />
+            </div>
+          </Link>
+
+          <Separator className="bg-neutral-800/50 w-full" />
+          <ModeToggle />
+
+          {/* Nav Items */}
+          <div className="flex flex-col items-center gap-4 w-full h-full pb-36">
+            <TooltipProvider>
+              {menuOptions.map((menuItem) => {
+                const isActive = pathName === menuItem.href;
+                return (
+                  <Tooltip key={menuItem.name} delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={menuItem.href}
+                        className="relative group p-3 rounded-2xl transition-all"
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute inset-0 bg-neutral-800/50 border border-neutral-700/50 rounded-2xl"
+                            transition={{
+                              type: "spring",
+                              bounce: 0.2,
+                              duration: 0.6,
+                            }}
+                          />
+                        )}
+                        <div
+                          className={clsx(
+                            "relative transition-colors duration-300",
+                            isActive
+                              ? "text-[#E2CBFF]"
+                              : "text-neutral-500 group-hover:text-neutral-300"
+                          )}
+                        >
+                          <menuItem.Component selected={isActive} />
+                        </div>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="right"
+                      sideOffset={20}
+                      className="bg-black/90 text-white border-neutral-800 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs"
                     >
-                      <menuItem.Component
-                        selected={pathName === menuItem.href}
-                      />
-                    </Link>
-                  </li>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  className="bg-black/10 backdrop-blur-xl"
-                >
-                  <p>{menuItem.name}</p>
-                </TooltipContent>
-              </Tooltip>
-            </ul>
-          ))}
-        </TooltipProvider>
-        <Separator />
-        <div className="flex items-center flex-col gap-9 dark:bg-[#353346]/30 py-4 px-2 rounded-full h-80 overflow-hidden border-[1px]">
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <LucideMousePointerClick className="dark:text-white" size={18} />
-            <div className="border-l-2 border-muted-foreground/50 h-6 absolute left-1/2 transform translate-x-[-50%] -bottom-[30px]" />
-          </div>
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <GitBranch className="text-muted-foreground" size={18} />
-            <div className="border-l-2 border-muted-foreground/50 h-6 absolute left-1/2 transform translate-x-[-50%] -bottom-[30px]"></div>
-          </div>
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <Database className="text-muted-foreground" size={18} />
-            <div className="border-l-2 border-muted-foreground/50 h-6 absolute left-1/2 transform translate-x-[-50%] -bottom-[30px]"></div>
-          </div>
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <GitBranch className="text-muted-foreground" size={18} />
+                      {menuItem.name}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </TooltipProvider>
           </div>
         </div>
-      </div>
-      <div className="flex items-center justify-center flex-col gap-8 ">
-        <ModeToggle />
-      </div>
+      </motion.div>
     </nav>
   );
 };
 
-export default MenuOptions;
+export default Sidebar;

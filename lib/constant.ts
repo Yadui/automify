@@ -103,7 +103,7 @@ export const menuOptions = [
 ];
 
 export const EditorCanvasDefaultCardTypes = {
-  Email: { description: "Send an email to a user", type: "Action" },
+  Email: { description: "Send an email via Gmail", type: "Action" },
   Condition: {
     description: "Boolean operator that creates different conditions lanes.",
     type: "Action",
@@ -145,6 +145,31 @@ export const EditorCanvasDefaultCardTypes = {
     description: "Delay the next action step by using the wait timer.",
     type: "Action",
   },
+  "HTTP Request": {
+    description: "Make an HTTP request to an external API or service.",
+    type: "Action",
+  },
+  Webhook: {
+    description: "Receive data from external services via a unique URL.",
+    type: "Trigger",
+  },
+  Delay: {
+    description:
+      "Pause the workflow for a specified duration or untill a specific time.",
+    type: "Action",
+  },
+  "Data Transform": {
+    description: "Modify, format, or restructure data between steps.",
+    type: "Action",
+  },
+  "Key-Value Storage": {
+    description: "Store and retrieve data across workflow executions.",
+    type: "Action",
+  },
+  "Toast Message": {
+    description: "Display a toast message in the browser.",
+    type: "Action",
+  },
 };
 
 export const CONNECTIONS: Connection[] = [
@@ -177,5 +202,19 @@ export const CONNECTIONS: Connection[] = [
     connectionKey: "slackNode",
     accessTokenKey: "slackAccessToken",
     slackSpecial: true,
+  },
+  {
+    title: "GitHub",
+    description: "Connect your GitHub to automate repositories and scripts",
+    image: "/github.png",
+    connectionKey: "githubNode",
+    accessTokenKey: "accessToken",
+  },
+  {
+    title: "Gmail",
+    description: "Connect your Gmail account to send emails",
+    image: "/gmailLogo.png",
+    connectionKey: "googleNode",
+    alwaysTrue: true,
   },
 ];

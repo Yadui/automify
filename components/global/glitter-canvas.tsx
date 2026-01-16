@@ -19,8 +19,8 @@ export function CanvasRevealEffectDemo2() {
               animationSpeed={3}
               containerClassName="bg-black"
               colors={[
-                [236, 72, 153],
-                [232, 121, 249],
+                [255, 255, 255],
+                [230, 230, 230],
               ]}
               dotSize={3}
             />
@@ -29,9 +29,9 @@ export function CanvasRevealEffectDemo2() {
 
         {/* Text + Icon Overlay */}
         <div className="relative z-20 h-full w-full flex flex-col items-center justify-center">
-          <div className="flex items-center justify-center gap-2">
-            <CirclePlus className="size-60 lg:hidden text-black" />
-            <span className="text-black font-pixelify select-none text-[20rem]">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-2">
+            <CirclePlus className="size-20 md:size-40 lg:hidden text-black mb-4 md:mb-0" />
+            <span className="text-black font-pixelify select-none text-[5rem] md:text-[10rem] lg:text-[20rem] leading-none">
               AUTOMIFY
             </span>
           </div>

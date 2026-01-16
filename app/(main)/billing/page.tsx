@@ -1,6 +1,6 @@
 import React from "react";
 import Stripe from "stripe";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 import db from "@/lib/db";
 import BillingDashboard from "./_components/billing-dashboard";
 
@@ -12,30 +12,31 @@ const Billing = async (props: Props) => {
   const { session_id } = props.searchParams ?? {
     session_id: "",
   };
-  if (session_id) {
+
+  const { user } = await validateRequest();
+
+  if (session_id && user) {
     const stripe = new Stripe(process.env.STRIPE_SECRET!, {
       typescript: true,
-      apiVersion: "2024-12-18.acacia",
+      apiVersion: "2025-06-30.basil",
     });
 
     const session = await stripe.checkout.sessions.listLineItems(session_id);
-    const user = await currentUser();
-    if (user) {
-      await db.user.update({
-        where: {
-          clerkId: user.id,
-        },
-        data: {
-          tier: session.data[0].description,
-          credits:
-            session.data[0].description == "Unlimited"
-              ? "Unlimited"
-              : session.data[0].description == "Pro"
-              ? "100"
-              : "10",
-        },
-      });
-    }
+
+    await db.user.update({
+      where: {
+        id: Number(user.id),
+      },
+      data: {
+        tier: session.data[0].description,
+        credits:
+          session.data[0].description == "Unlimited"
+            ? "Unlimited"
+            : session.data[0].description == "Pro"
+            ? "100"
+            : "10",
+      },
+    });
   }
 
   return (

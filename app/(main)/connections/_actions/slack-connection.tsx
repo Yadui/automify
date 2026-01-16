@@ -1,16 +1,9 @@
-"use server"; // Add this to mark it as a Server Component
-
+"use server";
 import { Option } from "@/components/ui/multiple-select";
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 import axios from "axios";
-// import { SomeType } from "@/lib/types"; // Import necessary types
 
-// Define a specific type for the function parameters instead of using any
-// If you need to keep it, add a comment explaining why it's kept
-// interface SlackConnectParams {}
-
-// Update the function to use the defined type
 export const onSlackConnect = async (
   app_id: string,
   authed_user_id: string,
@@ -19,39 +12,54 @@ export const onSlackConnect = async (
   bot_user_id: string,
   team_id: string,
   team_name: string,
-  user_id: string
+  userId: number
 ): Promise<void> => {
   if (!slack_access_token) return;
 
-  const slackConnection = await db.slack.findFirst({
-    where: { slackAccessToken: slack_access_token },
-    include: { connections: true },
-  });
-
-  if (!slackConnection) {
-    await db.slack.create({
-      data: {
-        userId: user_id,
+  await db.connection.upsert({
+    where: {
+      userId_provider_providerAccountId: {
+        userId,
+        provider: "slack",
+        providerAccountId: team_id,
+      },
+    },
+    update: {
+      accessToken: slack_access_token,
+      metadata: {
         appId: app_id,
         authedUserId: authed_user_id,
         authedUserToken: authed_user_token,
-        slackAccessToken: slack_access_token,
         botUserId: bot_user_id,
-        teamId: team_id,
         teamName: team_name,
-        connections: {
-          create: { userId: user_id, type: "Slack" },
-        },
       },
-    });
-  }
+      status: "active",
+    },
+    create: {
+      userId,
+      provider: "slack",
+      providerAccountId: team_id,
+      accessToken: slack_access_token,
+      metadata: {
+        appId: app_id,
+        authedUserId: authed_user_id,
+        authedUserToken: authed_user_token,
+        botUserId: bot_user_id,
+        teamName: team_name,
+      },
+      status: "active",
+    },
+  });
 };
 
 export const getSlackConnection = async () => {
-  const user = await currentUser();
+  const { user } = await validateRequest();
   if (user) {
-    return await db.slack.findFirst({
-      where: { userId: user.id },
+    return await db.connection.findFirst({
+      where: {
+        userId: Number(user.id),
+        provider: "slack",
+      },
     });
   }
   return null;
@@ -74,10 +82,7 @@ export async function listBotChannels(
       headers: { Authorization: `Bearer ${slackAccessToken}` },
     });
 
-    console.log(data);
-
     if (!data.ok) throw new Error(data.error);
-
     if (!data?.channels?.length) return [];
 
     return data.channels
@@ -87,7 +92,7 @@ export async function listBotChannels(
         value: ch.id,
       }));
   } catch (error) {
-    console.error("Error listing bot channels:");
+    console.error("Error listing bot channels:", error);
     throw error;
   }
 }
@@ -108,7 +113,6 @@ const postMessageInSlackChannel = async (
         },
       }
     );
-    console.log(`Message posted successfully to channel ID: ${slackChannel}`);
   } catch (error) {
     console.error(
       `Error posting message to Slack channel ${slackChannel}:`,
@@ -117,7 +121,6 @@ const postMessageInSlackChannel = async (
   }
 };
 
-// Wrapper function to post messages to multiple Slack channels
 export const postMessageToSlack = async (
   slackAccessToken: string,
   selectedSlackChannels: Option[],
@@ -128,14 +131,17 @@ export const postMessageToSlack = async (
     return { message: "Channel not selected" };
 
   try {
-    selectedSlackChannels
+    const promises = selectedSlackChannels
       .map((channel) => channel?.value)
-      .forEach((channel) => {
-        postMessageInSlackChannel(slackAccessToken, channel, content);
-      });
+      .filter((val): val is string => !!val)
+      .map((channelId) =>
+        postMessageInSlackChannel(slackAccessToken, channelId, content)
+      );
+
+    await Promise.all(promises);
+    return { message: "Success" };
   } catch (error) {
     console.error("Error posting message to Slack channel:", error);
+    return { message: "Failed to post messages" };
   }
-
-  return { message: "Success" };
 };

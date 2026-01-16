@@ -90,7 +90,7 @@ const ContentBasedOnTitle = ({
   if (!isConnected) return <p>Not connected</p>;
 
   return (
-    <AccordionContent>
+    <>
       <Card>
         {title === "Discord" && (
           <CardHeader>
@@ -128,7 +128,7 @@ const ContentBasedOnTitle = ({
           />
         </div>
       </Card>
-    </AccordionContent>
+    </>
   );
 };
 

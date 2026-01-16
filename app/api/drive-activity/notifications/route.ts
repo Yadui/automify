@@ -4,14 +4,13 @@ import { postMessageToSlack } from "@/app/(main)/connections/_actions/slack-conn
 import db from "@/lib/db";
 import axios from "axios";
 import { headers } from "next/headers";
-import { NextRequest } from "next/server";
 
-export default async function handler() {
+export async function POST() {
   console.log("🔴 Changed");
-  const headersList = headers();
+  const headersList = await headers();
   let channelResourceId;
   headersList.forEach((value, key) => {
-    if (key == "x-goog-resource-id") {
+    if (key === "x-goog-resource-id") {
       channelResourceId = value;
     }
   });
@@ -21,64 +20,95 @@ export default async function handler() {
       where: {
         googleResourceId: channelResourceId,
       },
-      select: { clerkId: true, credits: true },
+      select: { id: true, credits: true },
     });
+
     if (!user) {
       return Response.json({ message: "User not found" }, { status: 404 });
     }
 
-    if (parseInt(user.credits!) > 0 || user.credits == "Unlimited") {
-      const workflow = await db.workflows.findMany({
+    const credits = user.credits
+      ? user.credits === "Unlimited"
+        ? Infinity
+        : parseInt(user.credits)
+      : 0;
+
+    if (credits > 0) {
+      const workflows = await db.workflow.findMany({
         where: {
-          userId: user.clerkId,
+          userId: user.id,
+          publish: true,
         },
       });
-      if (workflow) {
-        workflow.map(async (flow) => {
-          const flowPath = JSON.parse(flow.flowPath!);
+
+      if (workflows && workflows.length > 0) {
+        for (const flow of workflows) {
+          if (!flow.flowPath) continue;
+
+          let flowPath;
+          try {
+            flowPath = JSON.parse(flow.flowPath);
+          } catch (e) {
+            console.error("Invalid flowPath JSON", e);
+            continue;
+          }
+
           let current = 0;
           while (current < flowPath.length) {
-            if (flowPath[current] == "Discord") {
-              const discordMessage = await db.discordWebhook.findFirst({
+            const nodeType = flowPath[current];
+
+            if (nodeType === "Discord") {
+              const discordConnection = await db.connection.findFirst({
                 where: {
-                  userId: flow.userId,
-                },
-                select: {
-                  url: true,
+                  userId: user.id,
+                  provider: "discord",
                 },
               });
-              if (discordMessage) {
+              if (discordConnection) {
                 await postContentToWebHook(
-                  flow.discordTemplate!,
-                  discordMessage.url
+                  flow.discordTemplate || "",
+                  discordConnection.accessToken // Webhook URL
                 );
-                flowPath.splice(flowPath[current], 1);
+                flowPath.splice(current, 1);
+                current--; // Adjust index due to splice
               }
-            }
-            if (flowPath[current] == "Slack") {
-              const channels = flow.slackChannels.map((channel) => {
-                return {
+            } else if (nodeType === "Slack") {
+              const slackConnection = await db.connection.findFirst({
+                where: {
+                  userId: user.id,
+                  provider: "slack",
+                },
+              });
+              if (slackConnection) {
+                const channels = flow.slackChannels.map((channel) => ({
                   label: "",
                   value: channel,
-                };
+                }));
+                await postMessageToSlack(
+                  slackConnection.accessToken,
+                  channels,
+                  flow.slackTemplate || ""
+                );
+                flowPath.splice(current, 1);
+                current--;
+              }
+            } else if (nodeType === "Notion") {
+              const notionConnection = await db.connection.findFirst({
+                where: {
+                  userId: user.id,
+                  provider: "notion",
+                },
               });
-              await postMessageToSlack(
-                flow.slackAccessToken!,
-                channels,
-                flow.slackTemplate!
-              );
-              flowPath.splice(flowPath[current], 1);
-            }
-            if (flowPath[current] == "Notion") {
-              await onCreateNewPageInDatabase(
-                flow.notionDbId!,
-                flow.notionAccessToken!,
-                JSON.parse(flow.notionTemplate!)
-              );
-              flowPath.splice(flowPath[current], 1);
-            }
-
-            if (flowPath[current] == "Wait") {
+              if (notionConnection) {
+                await onCreateNewPageInDatabase(
+                  flow.notionDbId!,
+                  notionConnection.accessToken,
+                  JSON.parse(flow.notionTemplate || "{}")
+                );
+                flowPath.splice(current, 1);
+                current--;
+              }
+            } else if (nodeType === "Wait") {
               const res = await axios.put(
                 "https://api.cron-job.org/jobs",
                 {
@@ -104,8 +134,8 @@ export default async function handler() {
                 }
               );
               if (res) {
-                flowPath.splice(flowPath[current], 1);
-                const cronPath = await db.workflows.update({
+                flowPath.splice(current, 1);
+                await db.workflow.update({
                   where: {
                     id: flow.id,
                   },
@@ -113,37 +143,26 @@ export default async function handler() {
                     cronPath: JSON.stringify(flowPath),
                   },
                 });
-                if (cronPath) break;
+                break; // Stop processing this flow for now
               }
               break;
             }
             current++;
           }
 
+          // Deduct credits
           if (user.credits !== "Unlimited") {
             await db.user.update({
-              where: { clerkId: user.clerkId },
+              where: { id: user.id },
               data: { credits: `${parseInt(user.credits!) - 1}` },
             });
           }
-        });
-        return Response.json(
-          {
-            message: "flow completed",
-          },
-          {
-            status: 200,
-          }
-        );
+        }
+
+        return Response.json({ message: "flows processed" }, { status: 200 });
       }
     }
   }
-  return Response.json(
-    {
-      message: "success",
-    },
-    {
-      status: 200,
-    }
-  );
+
+  return Response.json({ message: "success" }, { status: 200 });
 }

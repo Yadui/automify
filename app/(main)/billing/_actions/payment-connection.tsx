@@ -1,15 +1,15 @@
 "use server";
 
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 
 export const onPaymentDetails = async () => {
-  const user = await currentUser();
+  const { user } = await validateRequest();
 
   if (user) {
-    const connection = await db.user.findFirst({
+    const connection = await db.user.findUnique({
       where: {
-        clerkId: user.id,
+        id: Number(user.id),
       },
       select: {
         tier: true,
@@ -17,8 +17,7 @@ export const onPaymentDetails = async () => {
       },
     });
 
-    if (user) {
-      return connection;
-    }
+    return connection;
   }
+  return null;
 };

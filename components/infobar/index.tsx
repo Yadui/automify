@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { UserButton } from "@clerk/nextjs";
+import { LogoutButton } from "../global/logout-button";
 import { useBilling } from "@/providers/billing-provider";
 import { onPaymentDetails } from "@/app/(main)/billing/_actions/payment-connection";
 
@@ -76,7 +76,9 @@ const InfoBar = (props: InfoBarProps) => {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <UserButton />
+      <div className="flex items-center gap-4">
+        <LogoutButton />
+      </div>
     </div>
   );
 };

@@ -11,114 +11,84 @@ datasource db {
 }
 
 model User {
-  id Int @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  name           String?
+  hashedPassword String?
+  profileImage   String?
+  tier           String   @default("Free")
+  credits        String   @default("10")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  clerkId      String  @unique
-  name         String?
-  email        String  @unique
-  profileImage String?
-  tier         String? @default("Free")
-  credits      String? @default("10")
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  localGoogleId    String?  @unique
-  googleResourceId String?  @unique
-
-  LocalGoogleCredential LocalGoogleCredential?
-  DiscordWebhook        DiscordWebhook[]
-  Notion                Notion[]
-  Slack                 Slack[]
-  connections           Connections[]
-  workflows             Workflows[]
+  sessions    Session[]
+  connections Connection[]
+  workflows   Workflow[]
 }
 
-model LocalGoogleCredential {
-  id          String @id @default(uuid())
-  accessToken String @unique
+model Session {
+  id        String   @id
+  userId    Int
+  expiresAt DateTime
+  user      User     @relation(references: [id], fields: [userId], onDelete: Cascade)
+}
 
-  folderId   String?
-  pageToken  String?
-  channelId  String  @unique @default(uuid())
-  subscribed Boolean @default(false)
+model Connection {
+  id                String   @id @default(uuid())
+  provider          String // e.g., "slack", "google", "notion"
+  providerAccountId String // The unique ID from the provider
+  accessToken       String
+  refreshToken      String?
+  expiresAt         DateTime?
+  scopes            String?
+  metadata          Json?
+  status            String    @default("active") // active, revoked, expired
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subscriptions WebhookSubscription[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userId Int  @unique
-  user   User @relation(fields: [userId], references: [id])
+  @@unique([userId, provider, providerAccountId])
 }
 
-model DiscordWebhook {
-  id          String        @id @default(uuid())
-  webhookId   String        @unique
-  url         String        @unique
-  name        String
-  guildName   String
-  guildId     String
-  channelId   String        @unique
-  user        User          @relation(fields: [userId], references: [clerkId])
-  userId      String
-  connections Connections[]
+model WebhookSubscription {
+  id                String    @id @default(uuid())
+  externalId        String?   @unique
+  channelId         String?   @unique
+  verificationToken String?
+  expiration        DateTime?
+  status            String    @default("active")
+
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  workflowId String?
+  workflow   Workflow? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
 }
 
-model Slack {
-  id String @id @default(uuid())
+model Workflow {
+  id              String   @id @default(uuid())
+  name            String
+  description     String
+  nodes           Json?
+  edges           Json?
+  publish         Boolean  @default(false)
+  flowPath        String?
+  cronPath        String?
+  discordTemplate String?
+  slackTemplate   String?
+  slackChannels   String[]
+  notionTemplate  String?
+  notionDbId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  appId            String
-  authedUserId     String
-  authedUserToken  String @unique
-  slackAccessToken String @unique
-  botUserId        String
-  teamId           String
-  teamName         String
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  User        User          @relation(fields: [userId], references: [clerkId])
-  userId      String
-  connections Connections[]
-}
-
-model Notion {
-  id            String        @id @default(uuid())
-  accessToken   String        @unique
-  workspaceId   String        @unique
-  databaseId    String        @unique
-  workspaceName String
-  workspaceIcon String
-  User          User          @relation(fields: [userId], references: [clerkId])
-  userId        String
-  connections   Connections[]
-}
-
-model Connections {
-  id               String          @id @default(uuid())
-  type             String          @unique
-  DiscordWebhook   DiscordWebhook? @relation(fields: [discordWebhookId], references: [id])
-  discordWebhookId String?
-  Notion           Notion?         @relation(fields: [notionId], references: [id])
-  notionId         String?
-  User             User?           @relation(fields: [userId], references: [clerkId])
-  userId           String?
-  Slack            Slack?          @relation(fields: [slackId], references: [id])
-  slackId          String?
-}
-
-model Workflows {
-  id                String   @id @default(uuid())
-  nodes             String?
-  edges             String?
-  name              String
-  discordTemplate   String?
-  notionTemplate    String?
-  slackTemplate     String?
-  slackChannels     String[]
-  slackAccessToken  String?
-  notionAccessToken String?
-  notionDbId        String?
-  flowPath          String?
-  cronPath          String?
-  publish           Boolean? @default(false)
-  description       String
-  User              User     @relation(fields: [userId], references: [clerkId])
-  userId            String
+  webhooks WebhookSubscription[]
 }

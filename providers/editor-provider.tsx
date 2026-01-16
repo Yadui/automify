@@ -8,6 +8,7 @@ import {
   useEffect,
   useReducer,
 } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 export type EditorNode = EditorNodeType;
 
@@ -19,6 +20,14 @@ export type Editor = {
     target: string;
   }[];
   selectedNode: EditorNodeType;
+  isAddModalOpen: boolean;
+  addModalPosition: { x: number; y: number };
+  activeEdgeId?: string;
+  sourceNodeId?: string;
+  isSidebarOpen: boolean;
+  clipboard: EditorNode | null;
+  runStatus: Record<string, "pending" | "running" | "success" | "error">;
+  lastRunSuccess: boolean;
 };
 
 export type HistoryState = {
@@ -47,6 +56,12 @@ const initialEditorState: EditorState["editor"] = {
     type: "Trigger",
   },
   edges: [],
+  isAddModalOpen: false,
+  addModalPosition: { x: 0, y: 0 },
+  isSidebarOpen: false,
+  clipboard: null,
+  runStatus: {},
+  lastRunSuccess: false,
 };
 
 const initialHistoryState: HistoryState = {
@@ -111,6 +126,113 @@ const editorReducer = (
         editor: {
           ...state.editor,
           selectedNode: action.payload.element,
+          isSidebarOpen: action.payload.element.id !== "",
+        },
+      };
+    case "OPEN_ADD_MODAL":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          isAddModalOpen: true,
+          addModalPosition: action.payload.position,
+          activeEdgeId: action.payload.edgeId,
+          sourceNodeId: action.payload.sourceNodeId,
+        },
+      };
+    case "CLOSE_ADD_MODAL":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          isAddModalOpen: false,
+          activeEdgeId: undefined,
+          sourceNodeId: undefined,
+        },
+      };
+    case "SET_SIDEBAR_VISIBILITY":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          isSidebarOpen: action.payload.open,
+        },
+      };
+    case "UPDATE_NODE":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          elements: action.payload.elements,
+          selectedNode:
+            action.payload.elements.find(
+              (el) => el.id === state.editor.selectedNode.id
+            ) || state.editor.selectedNode,
+        },
+      };
+    case "COPY_NODE":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          clipboard: action.payload.node,
+        },
+      };
+    case "PASTE_NODE":
+      if (!state.editor.clipboard) return state;
+      const pastedNode: EditorNode = {
+        ...state.editor.clipboard,
+        id: uuidv4(),
+        position: action.payload.position,
+      };
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          elements: [...state.editor.elements, pastedNode],
+        },
+      };
+    case "DUPLICATE_NODE":
+      const duplicatedNode: EditorNode = {
+        ...action.payload.node,
+        id: uuidv4(),
+        position: {
+          x: action.payload.node.position.x + 100,
+          y: action.payload.node.position.y + 100,
+        },
+      };
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          elements: [...state.editor.elements, duplicatedNode],
+        },
+      };
+    case "SET_NODE_RUN_STATUS":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          runStatus: {
+            ...state.editor.runStatus,
+            [action.payload.nodeId]: action.payload.status,
+          },
+        },
+      };
+    case "CLEAR_RUN_STATUS":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          runStatus: {},
+        },
+      };
+    case "SET_LAST_RUN_SUCCESS":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          lastRunSuccess: action.payload.success,
         },
       };
     default:

@@ -2,10 +2,10 @@
 
 import db from "@/lib/db";
 
-export const getUserData = async (id: string) => {
+export const getUserData = async (id: number) => {
   const user_info = await db.user.findUnique({
     where: {
-      clerkId: id,
+      id,
     },
     include: {
       connections: true,

@@ -1,31 +1,38 @@
 import { google } from "googleapis";
-import { auth, clerkClient, createClerkClient } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
 import db from "@/lib/db";
 
 export async function GET() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.OAUTH2_REDIRECT_URI
-  );
-
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ message: "User not found" });
+  const { user } = await validateRequest();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const clerkClient = createClerkClient({
-    secretKey: process.env.CLERK_SECRET_KEY,
+
+  const connection = await db.connection.findFirst({
+    where: {
+      userId: Number(user.id),
+      provider: "google",
+      status: "active",
+    },
   });
-  const clerkResponse = await clerkClient.users.getUserOauthAccessToken(
-    userId,
-    "oauth_google"
+
+  if (!connection) {
+    return NextResponse.json(
+      { message: "Google account not connected" },
+      { status: 400 }
+    );
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${process.env.BASE_URL}/api/oauth/google/callback`
   );
 
-  const accessToken = clerkResponse.data[0].token;
   oauth2Client.setCredentials({
-    access_token: accessToken,
+    access_token: connection.accessToken,
+    refresh_token: connection.refreshToken || undefined,
   });
 
   const drive = google.drive({
@@ -37,7 +44,7 @@ export async function GET() {
     const response = await drive.files.list();
 
     if (response) {
-      return Response.json(
+      return NextResponse.json(
         {
           message: response.data,
         },
@@ -46,7 +53,7 @@ export async function GET() {
         }
       );
     } else {
-      return Response.json(
+      return NextResponse.json(
         {
           message: "No files found",
         },
@@ -57,7 +64,7 @@ export async function GET() {
     }
   } catch (err) {
     console.error(err);
-    return Response.json(
+    return NextResponse.json(
       {
         message: "Something went wrong",
       },

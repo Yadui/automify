@@ -2,18 +2,21 @@ import ProfileForm from "@/components/forms/profile-form";
 import React from "react";
 import ProfilePicture from "./_components/profile-picture";
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 
 const Settings = async () => {
-  const authUser = await currentUser();
+  const { user: authUser } = await validateRequest();
   if (!authUser) return null;
 
-  const user = await db.user.findUnique({ where: { clerkId: authUser.id } });
+  const userId = Number(authUser.id);
+
+  const user = await db.user.findUnique({ where: { id: userId } });
+
   const removeProfileImage = async () => {
     "use server";
     const response = await db.user.update({
       where: {
-        clerkId: authUser.id,
+        id: userId,
       },
       data: {
         profileImage: "",
@@ -38,15 +41,15 @@ const Settings = async () => {
   const updateUserInfo = async (name: string) => {
     "use server";
 
-    const updateUser = await db.user.update({
+    const updatedUser = await db.user.update({
       where: {
-        clerkId: authUser.id,
+        id: userId,
       },
       data: {
         name,
       },
     });
-    return updateUser;
+    return updatedUser;
   };
 
   return (

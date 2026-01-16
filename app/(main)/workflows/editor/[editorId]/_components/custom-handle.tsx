@@ -22,10 +22,11 @@ const CustomHandle = (props: Props) => {
           (edge) => edge.target === e.target
         ).length;
 
-        if (targetFromHandleInState === 1) return false;
+        // Allow unlimited target connections for merging
+        // if (targetFromHandleInState === 1) return false;
         if (sourceNode?.type === "Condition") return true;
-        if (sourcesFromHandleInState < 1) return true;
-        return false;
+        // Allow unlimited source connections for branching
+        return true;
       }}
       className="!-bottom-2 !h-4 !w-4 dark:bg-neutral-800"
     />

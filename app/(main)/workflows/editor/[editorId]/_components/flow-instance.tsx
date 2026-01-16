@@ -28,56 +28,9 @@ type Props = {
   nodeConnection?: NodeConnection;
 };
 
-const FlowInstance = ({ children, edges, nodes, nodeConnection }: Props) => {
-  const pathname = usePathname();
-  const [isFlow, setIsFlow] = useState([]);
-
-  const onFlowAutomation = useCallback(async () => {
-    const flow = await onCreateNodesEdges(
-      pathname.split("/").pop()!,
-      JSON.stringify(nodes),
-      JSON.stringify(edges),
-      JSON.stringify(isFlow)
-    );
-
-    if (flow) toast.message(flow.message);
-  }, [edges, isFlow, nodes, pathname]);
-
-  const onPublishWorkflow = useCallback(async () => {
-    const response = await onFlowPublish(pathname.split("/").pop()!, true);
-    if (response) toast.message(response);
-  }, [pathname]);
-
-  const onAutomateFlow = useCallback(() => {
-    const flows: any = [];
-    const connectedEdges = edges.map((edge) => edge.target);
-    connectedEdges.map((target) => {
-      nodes.map((node) => {
-        if (node.id === target) {
-          flows.push(node.type);
-        }
-      });
-    });
-
-    setIsFlow(flows);
-  }, [edges, nodes]);
-
-  useEffect(() => {
-    onAutomateFlow();
-  }, [onAutomateFlow]);
-
+const FlowInstance = ({ children }: Props) => {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-3 p-4">
-        <Button onClick={onFlowAutomation} disabled={isFlow.length < 1}>
-          Save
-        </Button>
-        <Button disabled={isFlow.length < 1} onClick={onPublishWorkflow}>
-          Publish
-        </Button>
-      </div>
-      {children}
-    </div>
+    <div className="relative flex-1 h-full overflow-hidden">{children}</div>
   );
 };
 

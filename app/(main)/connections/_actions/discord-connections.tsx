@@ -1,7 +1,6 @@
 "use server";
-
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 import axios from "axios";
 
 export const onDiscordConnect = async (
@@ -9,114 +8,118 @@ export const onDiscordConnect = async (
   webhook_id: string,
   webhook_name: string,
   webhook_url: string,
-  id: string,
+  userId: number,
   guild_name: string,
   guild_id: string
 ) => {
-  //check if webhook id params set
-  if (webhook_id) {
-    //check if webhook exists in database with userid
-    const webhook = await db.discordWebhook.findFirst({
-      where: {
-        userId: id,
+  if (!webhook_id) return;
+
+  await db.connection.upsert({
+    where: {
+      userId_provider_providerAccountId: {
+        userId,
+        provider: "discord",
+        providerAccountId: webhook_id,
       },
-      include: {
-        connections: {
-          select: {
-            type: true,
-          },
-        },
+    },
+    update: {
+      accessToken: webhook_url, // We store the webhook URL as the token for Discord
+      metadata: {
+        channelId: channel_id,
+        webhookName: webhook_name,
+        guildName: guild_name,
+        guildId: guild_id,
       },
-    });
-
-    //if webhook does not exist for this user
-    if (!webhook) {
-      //create new webhook
-      await db.discordWebhook.create({
-        data: {
-          userId: id,
-          webhookId: webhook_id,
-          channelId: channel_id!,
-          guildId: guild_id!,
-          name: webhook_name!,
-          url: webhook_url!,
-          guildName: guild_name!,
-          connections: {
-            create: {
-              userId: id,
-              type: "Discord",
-            },
-          },
-        },
-      });
-    }
-
-    //if webhook exists return check for duplicate
-    if (webhook) {
-      //check if webhook exists for target channel id
-      const webhook_channel = await db.discordWebhook.findUnique({
-        where: {
-          channelId: channel_id,
-        },
-        include: {
-          connections: {
-            select: {
-              type: true,
-            },
-          },
-        },
-      });
-
-      //if no webhook for channel create new webhook
-      if (!webhook_channel) {
-        await db.discordWebhook.create({
-          data: {
-            userId: id,
-            webhookId: webhook_id,
-            channelId: channel_id!,
-            guildId: guild_id!,
-            name: webhook_name!,
-            url: webhook_url!,
-            guildName: guild_name!,
-            connections: {
-              create: {
-                userId: id,
-                type: "Discord",
-              },
-            },
-          },
-        });
-      }
-    }
-  }
+      status: "active",
+    },
+    create: {
+      userId,
+      provider: "discord",
+      providerAccountId: webhook_id,
+      accessToken: webhook_url,
+      metadata: {
+        channelId: channel_id,
+        webhookName: webhook_name,
+        guildName: guild_name,
+        guildId: guild_id,
+      },
+      status: "active",
+    },
+  });
 };
 
 export const getDiscordConnectionUrl = async () => {
-  const user = await currentUser();
+  const { user } = await validateRequest();
   if (user) {
-    const webhook = await db.discordWebhook.findFirst({
+    const connection = await db.connection.findFirst({
       where: {
-        userId: user.id,
-      },
-      select: {
-        url: true,
-        name: true,
-        guildName: true,
+        userId: Number(user.id),
+        provider: "discord",
       },
     });
 
-    return webhook;
+    if (connection) {
+      const url = connection.accessToken;
+      // Validate that this is actually a webhook URL, not an old OAuth token
+      const isValidWebhookUrl =
+        url?.startsWith("https://discord.com/api/webhooks/") ||
+        url?.startsWith("https://discordapp.com/api/webhooks/");
+
+      if (!isValidWebhookUrl) {
+        console.warn(
+          "Discord connection has invalid webhook URL (may be old OAuth token). User should reconnect."
+        );
+        return {
+          url: null,
+          name: (connection.metadata as any)?.webhookName,
+          guildName: (connection.metadata as any)?.guildName,
+          needsReconnect: true,
+        };
+      }
+
+      return {
+        url: connection.accessToken,
+        name: (connection.metadata as any)?.webhookName,
+        guildName: (connection.metadata as any)?.guildName,
+        needsReconnect: false,
+      };
+    }
   }
+  return null;
 };
 
 export const postContentToWebHook = async (content: string, url: string) => {
-  console.log(content);
-  if (content != "") {
+  if (!content) {
+    return { message: "Message content is empty" };
+  }
+
+  // Validate webhook URL format
+  const isValidWebhookUrl =
+    url?.startsWith("https://discord.com/api/webhooks/") ||
+    url?.startsWith("https://discordapp.com/api/webhooks/");
+
+  if (!url || !isValidWebhookUrl) {
+    console.error(
+      "Discord Webhook Error: Invalid URL format. Expected Discord webhook URL, got:",
+      url?.slice(0, 50)
+    );
+    return {
+      message:
+        "Invalid Discord webhook URL. Please reconnect Discord to get a new webhook.",
+    };
+  }
+
+  try {
     const posted = await axios.post(url, { content });
     if (posted) {
       return { message: "success" };
     }
-    return { message: "failed request" };
+  } catch (error: any) {
+    console.error("Discord Webhook Error:", error?.message || error);
+    return {
+      message: error?.response?.data?.message || "Failed to send message",
+    };
   }
-  return { message: "String empty" };
+
+  return { message: "Unknown error" };
 };

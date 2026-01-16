@@ -1,7 +1,7 @@
 import { CONNECTIONS } from "@/lib/constant";
 import React from "react";
 import ConnectionCard from "./_components/connection-card";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 import { onDiscordConnect } from "./_actions/discord-connections";
 import { onNotionConnect } from "./_actions/notion-connection";
 import { onSlackConnect } from "./_actions/slack-connection";
@@ -55,10 +55,11 @@ const Connections = async (props: ConnectionProps) => {
     team_name,
   } = props;
 
-  const user = await currentUser();
+  const { user } = await validateRequest();
   if (!user) return null;
 
   const onUserConnections = async () => {
+    /*
     await onDiscordConnect(
       channel_id!,
       webhook_id!,
@@ -87,20 +88,24 @@ const Connections = async (props: ConnectionProps) => {
       team_name!,
       user.id
     );
+    */
 
     const connections: ConnectionStatus = {
       Notion: false,
       Slack: false,
-      "Google Drive": true, // Always true as per logic
+      "Google Drive": false,
       Discord: false,
+      GitHub: false,
     };
 
-    const user_info = await getUserData(user.id);
+    const user_info = await getUserData(Number(user.id));
 
-    user_info?.connections.forEach((connection: { type: string }) => {
-      if (connection.type in connections) {
-        connections[connection.type as keyof ConnectionStatus] = true;
-      }
+    user_info?.connections.forEach((connection) => {
+      if (connection.provider === "google") connections["Google Drive"] = true;
+      if (connection.provider === "slack") connections["Slack"] = true;
+      if (connection.provider === "notion") connections["Notion"] = true;
+      if (connection.provider === "discord") connections["Discord"] = true;
+      if (connection.provider === "github") connections["GitHub"] = true;
     });
 
     return connections;

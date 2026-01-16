@@ -45,6 +45,7 @@ export function OrbitingCircles({
                 "--radius": radius,
                 "--angle": angle,
                 "--icon-size": `${iconSize}px`,
+                willChange: "transform",
               } as React.CSSProperties
             }
             className={cn(

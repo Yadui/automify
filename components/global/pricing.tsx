@@ -1,176 +1,114 @@
+import React from "react";
+import { Check } from "lucide-react";
 import { LampComponent } from "./lamp";
-import { CardContainer, CardBody, CardItem } from "./3d-card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const pricingPlans = [
+  {
+    name: "Hobby",
+    price: "0",
+    description: "Perfect for exploring the basics of automation.",
+    features: [
+      "3 Free automations",
+      "50 tasks per month",
+      "Two-step Actions",
+      "Basic support",
+    ],
+    cta: "Get Started",
+    highlighted: false,
+  },
+  {
+    name: "Pro Plan",
+    price: "9",
+    description: "Advanced features for power users and small teams.",
+    features: [
+      "Unlimited automations",
+      "100 tasks per month",
+      "Multi-step Actions",
+      "24/7 Priority support",
+      "Custom Webhooks",
+    ],
+    cta: "Get Started Now",
+    highlighted: true,
+  },
+  {
+    name: "Unlimited",
+    price: "19",
+    description: "The ultimate solution for scaling your workflows.",
+    features: [
+      "Unlimited automations",
+      "Unlimited tasks per month",
+      "Team collaboration",
+      "Advanced analytics",
+      "Custom branding",
+    ],
+    cta: "Contact Sales",
+    highlighted: false,
+  },
+];
 
 export default function Pricing() {
   return (
-    <div>
+    <div className="w-full flex flex-col items-center">
       <LampComponent />
 
-      <div className="flex flex-wrap items-center justify-center flex-col md:flex-row gap-8 -mt-72">
-        <CardContainer className="inter-var">
-          <CardBody className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-neutral-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-full md:!w-[350px] h-auto rounded-xl p-6 border">
-            <CardItem
-              translateZ="50"
-              className="text-xl font-bold text-neutral-600 dark:text-white "
-            >
-              Hobby
-              <h2 className="text-6xl ">$0</h2>
-            </CardItem>
-            <CardItem
-              translateZ="60"
-              className="text-neutral-500 text-sm max-w-sm mt-2 dark:text-neutral-300"
-            >
-              Get a glimpse of what our software is capable of. Just a heads up{" "}
-              {"you'll"} never leave us after this!
-              <ul className="my-4 flex flex-col gap-2">
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon />3 Free automations */}
-                </li>
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  50 tasks per month
-                </li>
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  Two-step Actions
-                </li>
-              </ul>
-            </CardItem>
-            <div className="flex justify-between items-center mt-8">
-              <CardItem
-                translateZ={20}
-                as="button"
-                className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
-              >
-                Try now →
-              </CardItem>
-              <CardItem
-                translateZ={20}
-                as="button"
-                className="px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs font-bold"
-              >
-                Get Started Now
-              </CardItem>
-            </div>
-            <CardItem
-              translateZ={20}
-              as="button"
-              className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
-            >
-              *Demo pricing
-            </CardItem>
-          </CardBody>
-        </CardContainer>
-        <CardContainer className="inter-var ">
-          <CardBody className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-neutral-500/[0.1] dark:bg-black dark:border-[#E2CBFF] border-black/[0.1] w-full md:!w-[350px] h-auto rounded-xl p-6 border">
-            <CardItem
-              translateZ="50"
-              className="text-xl font-bold text-neutral-600 dark:text-white "
-            >
-              Pro Plan
-              <h2 className="text-6xl ">$9</h2>
-            </CardItem>
-            <CardItem
-              translateZ="60"
-              className="text-neutral-500 text-sm max-w-sm mt-2 dark:text-neutral-300"
-            >
-              Get a glimpse of what our software is capable of. Just a heads up{" "}
-              {"you'll"} never leave us after this!
-              <ul className="my-4 flex flex-col gap-2">
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon />3 Free automations */}
-                </li>
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  100 tasks per month
-                </li>
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  24/7 Support
-                </li>
-              </ul>
-            </CardItem>
-            <div className="flex justify-between items-center mt-8">
-              <CardItem
-                translateZ={20}
-                as="button"
-                className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
-              >
-                Try now →
-              </CardItem>
-              <CardItem
-                translateZ={20}
-                as="button"
-                className="px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs font-bold"
-              >
-                Get Started Now
-              </CardItem>
-            </div>
-            <CardItem
-              translateZ={20}
-              as="button"
-              className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
-            >
-              *Demo pricing
-            </CardItem>
-          </CardBody>
-        </CardContainer>
-        <CardContainer className="inter-var ">
-          <CardBody className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-neutral-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-full md:!w-[350px] h-auto rounded-xl p-6 border">
-            <CardItem
-              translateZ="50"
-              className="text-xl font-bold text-neutral-600 dark:text-white "
-            >
-              Unlimited
-              <h2 className="text-6xl ">$19</h2>
-            </CardItem>
-            <CardItem
-              translateZ="60"
-              className="text-neutral-500 text-sm max-w-sm mt-2 dark:text-neutral-300"
-            >
-              Get a glimpse of what our software is capable of. Just a heads up{" "}
-              {"you'll"} never leave us after this!
-              <ul className="my-4 flex flex-col gap-2">
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  Unlimited automations
-                </li>
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  200 tasks per month
-                </li>
-                <li className="flex items-center gap-2">
-                  {/* <CheckIcon /> */}
-                  Team collaboration
-                </li>
-              </ul>
-            </CardItem>
-            <div className="flex justify-between items-center mt-8">
-              <CardItem
-                translateZ={20}
-                as="button"
-                className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
-              >
-                Try now →
-              </CardItem>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 -mt-72 px-4 sm:px-8 md:px-16 lg:px-24 w-full max-w-7xl relative z-10 overflow-visible">
+        {pricingPlans.map((plan) => (
+          <div
+            key={plan.name}
+            className={cn(
+              "relative group flex flex-col p-8 rounded-3xl border transition-all duration-500",
+              plan.highlighted
+                ? "bg-[#1F1F1F] border-[#E2CBFF] shadow-2xl shadow-[#E2CBFF]/10 scale-105"
+                : "bg-black/50 backdrop-blur-xl border-neutral-900 hover:border-neutral-800"
+            )}
+          >
+            {plan.highlighted && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#E2CBFF] to-[#393BB2] text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">
+                Most Popular
+              </div>
+            )}
 
-              <CardItem
-                translateZ={20}
-                as="button"
-                className="px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs font-bold"
-              >
-                Get Started Now
-              </CardItem>
+            <div className="mb-8">
+              <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-5xl font-bold text-white">
+                  ${plan.price}
+                </span>
+                <span className="text-neutral-500">/month</span>
+              </div>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                {plan.description}
+              </p>
             </div>
-            <CardItem
-              translateZ={20}
-              as="button"
-              className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
+
+            <div className="flex-1 mb-8">
+              <ul className="space-y-4">
+                {plan.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-start gap-3 text-neutral-300 text-sm"
+                  >
+                    <Check className="w-5 h-5 text-[#E2CBFF] flex-shrink-0 mt-0.5" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <Button
+              className={cn(
+                "w-full py-6 rounded-2xl font-bold transition-all duration-300",
+                plan.highlighted
+                  ? "bg-white text-black hover:bg-neutral-200"
+                  : "bg-neutral-900 text-white hover:bg-neutral-800 border border-neutral-800"
+              )}
             >
-              *Demo pricing
-            </CardItem>
-          </CardBody>
-        </CardContainer>
+              {plan.cta}
+            </Button>
+          </div>
+        ))}
       </div>
     </div>
   );

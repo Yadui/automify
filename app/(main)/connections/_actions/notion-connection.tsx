@@ -1,7 +1,6 @@
 "use server";
-
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 import { Client } from "@notionhq/client";
 
 export const onNotionConnect = async (
@@ -10,57 +9,61 @@ export const onNotionConnect = async (
   workspace_icon: string,
   workspace_name: string,
   database_id: string,
-  id: string
+  userId: number
 ) => {
-  "use server";
   if (access_token) {
-    //check if notion is connected
-    const notion_connected = await db.notion.findFirst({
+    await db.connection.upsert({
       where: {
-        accessToken: access_token,
-      },
-      include: {
-        connections: {
-          select: {
-            type: true,
-          },
+        userId_provider_providerAccountId: {
+          userId,
+          provider: "notion",
+          providerAccountId: workspace_id,
         },
+      },
+      update: {
+        accessToken: access_token,
+        metadata: {
+          workspaceIcon: workspace_icon,
+          workspaceName: workspace_name,
+          databaseId: database_id,
+        },
+        status: "active",
+      },
+      create: {
+        userId,
+        provider: "notion",
+        providerAccountId: workspace_id,
+        accessToken: access_token,
+        metadata: {
+          workspaceIcon: workspace_icon,
+          workspaceName: workspace_name,
+          databaseId: database_id,
+        },
+        status: "active",
       },
     });
-
-    if (!notion_connected) {
-      //create connection
-      await db.notion.create({
-        data: {
-          userId: id,
-          workspaceIcon: workspace_icon!,
-          accessToken: access_token,
-          workspaceId: workspace_id!,
-          workspaceName: workspace_name!,
-          databaseId: database_id,
-          connections: {
-            create: {
-              userId: id,
-              type: "Notion",
-            },
-          },
-        },
-      });
-    }
   }
 };
+
 export const getNotionConnection = async () => {
-  const user = await currentUser();
+  const { user } = await validateRequest();
   if (user) {
-    const connection = await db.notion.findFirst({
+    const connection = await db.connection.findFirst({
       where: {
-        userId: user.id,
+        userId: Number(user.id),
+        provider: "notion",
       },
     });
     if (connection) {
-      return connection;
+      return {
+        ...connection,
+        workspaceIcon: (connection.metadata as any)?.workspaceIcon,
+        workspaceName: (connection.metadata as any)?.workspaceName,
+        databaseId: (connection.metadata as any)?.databaseId,
+      };
     }
   }
+  return null;
 };
 
 export const getNotionDatabase = async (
@@ -83,23 +86,64 @@ export const onCreateNewPageInDatabase = async (
     auth: accessToken,
   });
 
-  console.log(databaseId);
+  // First, get the database schema to find the title property name
+  const database = (await notion.databases.retrieve({
+    database_id: databaseId,
+  })) as any;
+
+  // Find the property that is of type "title"
+  let titlePropertyName = "Name"; // default fallback
+  for (const [propName, propValue] of Object.entries(database.properties)) {
+    if ((propValue as any).type === "title") {
+      titlePropertyName = propName;
+      break;
+    }
+  }
+
+  // Create the page with the correct title property name
   const response = await notion.pages.create({
     parent: {
       type: "database_id",
       database_id: databaseId,
     },
     properties: {
-      name: [
-        {
-          text: {
-            content: content,
+      [titlePropertyName]: {
+        title: [
+          {
+            text: {
+              content: content,
+            },
           },
-        },
-      ],
+        ],
+      },
     },
   });
-  if (response) {
-    return response;
+  return response;
+};
+
+export const getNotionDatabases = async (accessToken: string) => {
+  const notion = new Client({
+    auth: accessToken,
+  });
+
+  try {
+    const response = await notion.search({
+      filter: {
+        value: "database",
+        property: "object",
+      },
+      page_size: 50,
+    });
+
+    return {
+      databases: response.results.map((db: any) => ({
+        id: db.id,
+        title: db.title?.[0]?.plain_text || "Untitled Database",
+        icon: db.icon?.emoji || db.icon?.external?.url || "📊",
+      })),
+    };
+  } catch (error: any) {
+    console.error("Error fetching Notion databases:", error);
+    return { databases: [], error: error.message };
   }
 };

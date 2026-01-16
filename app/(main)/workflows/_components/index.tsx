@@ -6,11 +6,12 @@ import MoreCredits from "./more-credits";
 
 // Define the type for a workflow
 interface WorkflowType {
-  id: string; // Existing property
-  name: string; // Add required properties
-  description: string; // Add required properties
-  publish: boolean | null; // Update to allow null
-  // Add other properties as needed
+  id: string;
+  name: string;
+  description: string;
+  publish: boolean | null;
+  nodes: any;
+  edges: any;
 }
 
 // Remove unused props parameter if not needed

@@ -16,7 +16,7 @@ import { getDiscordConnectionUrl } from "@/app/(main)/connections/_actions/disco
 import { getNotionDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { getNotionConnection } from "@/app/(main)/connections/_actions/notion-connection";
 import { getSlackConnection } from "@/app/(main)/connections/_actions/slack-connection";
-import { DiscordWebhook, Slack } from "@prisma/client";
+// type imports if needed or use any for raw DB types
 
 export const onDragStart = (
   event: React.DragEvent<HTMLDivElement>,
@@ -30,7 +30,7 @@ export const onSlackContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setSlackNode((prev: Slack) => ({
+  nodeConnection.setSlackNode((prev: any) => ({
     ...prev,
     content: event.target.value,
   }));
@@ -40,7 +40,7 @@ export const onDiscordContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setDiscordNode((prev: DiscordWebhook) => ({
+  nodeConnection.setDiscordNode((prev: any) => ({
     ...prev,
     content: event.target.value,
   }));
@@ -92,6 +92,8 @@ export const onAddTemplate = (
   }
 };
 
+import { getGoogleConnection } from "@/app/(main)/connections/_actions/google-connection";
+
 export const onConnections = async (
   nodeConnection: ConnectionProviderProps,
   editorState: EditorState,
@@ -122,28 +124,41 @@ export const onConnections = async (
         },
       });
 
-      if (nodeConnection.notionNode.databaseId !== "") {
+      // Only fetch database if we have a valid databaseId
+      const dbId = nodeConnection.notionNode.databaseId;
+      if (dbId && dbId.length > 10) {
         const response = await getNotionDatabase(
-          nodeConnection.notionNode.databaseId,
+          dbId,
           nodeConnection.notionNode.accessToken
         );
       }
     }
   }
   if (editorState.editor.selectedNode.data.title == "Slack") {
-    const connection = await getSlackConnection();
+    const connection = (await getSlackConnection()) as any;
     if (connection) {
       nodeConnection.setSlackNode({
-        appId: connection.appId,
-        authedUserId: connection.authedUserId,
-        authedUserToken: connection.authedUserToken,
-        slackAccessToken: connection.slackAccessToken,
-        botUserId: connection.botUserId,
-        teamId: connection.teamId,
-        teamName: connection.teamName,
+        appId: connection.metadata?.appId,
+        authedUserId: connection.metadata?.authedUserId,
+        authedUserToken: connection.metadata?.authedUserToken,
+        slackAccessToken: connection.accessToken,
+        botUserId: connection.metadata?.botUserId,
+        teamId: connection.providerAccountId,
+        teamName: connection.metadata?.teamName,
         userId: connection.userId,
         content: "",
       });
+    }
+  }
+  if (editorState.editor.selectedNode.data.title == "Google Drive") {
+    const connection = (await getGoogleConnection()) as any;
+    if (connection) {
+      nodeConnection.setGoogleNode([
+        {
+          ...connection,
+          email: connection.metadata?.email,
+        },
+      ]);
     }
   }
 };

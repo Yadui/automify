@@ -1,15 +1,15 @@
 "use server";
 import { Option } from "@/components/ui/multiple-select";
 import db from "@/lib/db";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { validateRequest } from "@/lib/auth";
 
 export const getGoogleListener = async () => {
-  const { userId } = await auth();
+  const { user } = await validateRequest();
 
-  if (userId) {
+  if (user) {
     const listener = await db.user.findUnique({
       where: {
-        clerkId: userId,
+        id: Number(user.id),
       },
       select: {
         googleResourceId: true,
@@ -21,8 +21,7 @@ export const getGoogleListener = async () => {
 };
 
 export const onFlowPublish = async (workflowId: string, state: boolean) => {
-  console.log(state);
-  const published = await db.workflows.update({
+  const published = await db.workflow.update({
     where: {
       id: workflowId,
     },
@@ -40,11 +39,11 @@ export const onCreateNodeTemplate = async (
   type: string,
   workflowId: string,
   channels?: Option[],
-  accessToken?: string,
+  accessToken?: string, // Legacy param, we won't store it in workflow anymore
   notionDbId?: string
 ) => {
   if (type === "Discord") {
-    const response = await db.workflows.update({
+    const response = await db.workflow.update({
       where: {
         id: workflowId,
       },
@@ -58,18 +57,18 @@ export const onCreateNodeTemplate = async (
     }
   }
   if (type === "Slack") {
-    const response = await db.workflows.update({
+    const response = await db.workflow.update({
       where: {
         id: workflowId,
       },
       data: {
         slackTemplate: content,
-        slackAccessToken: accessToken,
+        // We do NOT store slackAccessToken in workflow anymore
       },
     });
 
     if (response) {
-      const channelList = await db.workflows.findUnique({
+      const channelList = await db.workflow.findUnique({
         where: {
           id: workflowId,
         },
@@ -81,30 +80,13 @@ export const onCreateNodeTemplate = async (
       if (channelList) {
         //remove duplicates before insert
         const NonDuplicated = channelList.slackChannels.filter(
-          (channel) => channel !== channels![0].value
+          (channel) =>
+            channel !==
+            (channels && channels.length > 0 ? channels[0].value : "")
         );
 
-        NonDuplicated!
-          .map((channel) => channel)
-          .forEach(async (channel) => {
-            await db.workflows.update({
-              where: {
-                id: workflowId,
-              },
-              data: {
-                slackChannels: {
-                  push: channel,
-                },
-              },
-            });
-          });
-
-        return "Slack template saved";
-      }
-      channels!
-        .map((channel) => channel.value)
-        .forEach(async (channel) => {
-          await db.workflows.update({
+        const promises = NonDuplicated.map((channel) =>
+          db.workflow.update({
             where: {
               id: workflowId,
             },
@@ -113,20 +95,40 @@ export const onCreateNodeTemplate = async (
                 push: channel,
               },
             },
-          });
-        });
+          })
+        );
+
+        await Promise.all(promises);
+        return "Slack template saved";
+      }
+
+      if (channels && channels.length > 0) {
+        const promises = channels.map((channel) =>
+          db.workflow.update({
+            where: {
+              id: workflowId,
+            },
+            data: {
+              slackChannels: {
+                push: channel.value,
+              },
+            },
+          })
+        );
+        await Promise.all(promises);
+      }
       return "Slack template saved";
     }
   }
 
   if (type === "Notion") {
-    const response = await db.workflows.update({
+    const response = await db.workflow.update({
       where: {
         id: workflowId,
       },
       data: {
         notionTemplate: content,
-        notionAccessToken: accessToken,
+        // We do NOT store notionAccessToken in workflow anymore
         notionDbId: notionDbId,
       },
     });
@@ -136,26 +138,27 @@ export const onCreateNodeTemplate = async (
 };
 
 export const onGetWorkflows = async () => {
-  const user = await currentUser();
+  const { user } = await validateRequest();
   if (user) {
-    const workflow = await db.workflows.findMany({
+    const workflows = await db.workflow.findMany({
       where: {
-        userId: user.id,
+        userId: Number(user.id),
       },
     });
 
-    if (workflow) return workflow;
+    return workflows;
   }
+  return [];
 };
 
 export const onCreateWorkflow = async (name: string, description: string) => {
-  const user = await currentUser();
+  const { user } = await validateRequest();
 
   if (user) {
     //create new workflow
-    const workflow = await db.workflows.create({
+    const workflow = await db.workflow.create({
       data: {
-        userId: user.id,
+        userId: Number(user.id),
         name,
         description,
       },
@@ -164,10 +167,19 @@ export const onCreateWorkflow = async (name: string, description: string) => {
     if (workflow) return { message: "workflow created" };
     return { message: "Oops! try again" };
   }
+  return { message: "Unauthorized" };
+};
+
+export const onGetWorkflow = async (workflowId: string) => {
+  return await db.workflow.findUnique({
+    where: {
+      id: workflowId,
+    },
+  });
 };
 
 export const onGetNodesEdges = async (flowId: string) => {
-  const nodesEdges = await db.workflows.findUnique({
+  const nodesEdges = await db.workflow.findUnique({
     where: {
       id: flowId,
     },
@@ -177,4 +189,37 @@ export const onGetNodesEdges = async (flowId: string) => {
     },
   });
   if (nodesEdges?.nodes && nodesEdges?.edges) return nodesEdges;
+};
+
+export const onDeleteWorkflow = async (workflowId: string) => {
+  const { user } = await validateRequest();
+
+  if (!user) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  try {
+    // Verify ownership before deleting
+    const workflow = await db.workflow.findUnique({
+      where: { id: workflowId },
+      select: { userId: true },
+    });
+
+    if (!workflow) {
+      return { success: false, message: "Workflow not found" };
+    }
+
+    if (workflow.userId !== Number(user.id)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    await db.workflow.delete({
+      where: { id: workflowId },
+    });
+
+    return { success: true, message: "Workflow deleted" };
+  } catch (error) {
+    console.error("Error deleting workflow:", error);
+    return { success: false, message: "Failed to delete workflow" };
+  }
 };

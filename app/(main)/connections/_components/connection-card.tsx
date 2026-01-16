@@ -15,6 +15,7 @@ interface ConnectionCardProps {
   icon: string;
   type: string;
   connected: { [key: string]: boolean }; // Define the type for connected
+  connectedId?: string;
 }
 
 const ConnectionCard: React.FC<ConnectionCardProps> = ({
@@ -23,6 +24,7 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
   icon,
   type,
   connected,
+  connectedId,
 }) => {
   return (
     <Card className="flex w-full items-center justify-between">
@@ -44,17 +46,26 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
       <div className="flex flex-col items-center gap-2 p-4">
         {connected[type] ? (
           <>
-            <div className="border-bg-primary rounded-lg border-2 px-3 py-2 font-bold text-white">
-              Connected
+            <div className="border-bg-primary rounded-lg border-2 px-3 py-2 font-bold text-white flex flex-col items-center">
+              <span>Connected</span>
+              {connectedId && (
+                <span className="text-[10px] font-normal text-muted-foreground mt-1">
+                  {connectedId}
+                </span>
+              )}
             </div>
             <Link
               href={
                 title === "Discord"
-                  ? process.env.NEXT_PUBLIC_DISCORD_REDIRECT!
+                  ? "/api/oauth/discord/start"
                   : title === "Notion"
-                  ? process.env.NEXT_PUBLIC_NOTION_AUTH_URL!
+                  ? "/api/oauth/notion/start"
                   : title === "Slack"
-                  ? process.env.NEXT_PUBLIC_SLACK_REDIRECT!
+                  ? "/api/oauth/slack/start"
+                  : title === "Google Drive" || title === "Gmail"
+                  ? "/api/oauth/google/start"
+                  : title === "GitHub"
+                  ? "/api/auth/github/start"
                   : "#"
               }
               className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
@@ -66,11 +77,15 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
           <Link
             href={
               title === "Discord"
-                ? process.env.NEXT_PUBLIC_DISCORD_REDIRECT!
+                ? "/api/oauth/discord/start"
                 : title === "Notion"
-                ? process.env.NEXT_PUBLIC_NOTION_AUTH_URL!
+                ? "/api/oauth/notion/start"
                 : title === "Slack"
-                ? process.env.NEXT_PUBLIC_SLACK_REDIRECT!
+                ? "/api/oauth/slack/start"
+                : title === "Google Drive" || title === "Gmail"
+                ? "/api/oauth/google/start"
+                : title === "GitHub"
+                ? "/api/auth/github/start"
                 : "#"
             }
             className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
