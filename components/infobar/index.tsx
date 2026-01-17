@@ -1,23 +1,34 @@
 "use client";
 import React, { useEffect } from "react";
-import { ModeToggle } from "../global/mode-toggle";
-import { Book, Headphones, Search } from "lucide-react";
-import Templates from "../icons/cloud_download";
+import Link from "next/link";
+import {
+  Book,
+  Headphones,
+  Search,
+  FileText,
+  Shield,
+  HelpCircle,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "../global/logout-button";
 import { useBilling } from "@/providers/billing-provider";
 import { onPaymentDetails } from "@/app/(main)/billing/_actions/payment-connection";
 
-interface InfoBarProps {
-  // Add actual props here or use 'object'/'unknown' if needed
-}
+interface InfoBarProps {}
 
 const InfoBar = (props: InfoBarProps) => {
   const { credits, tier, setCredits, setTier } = useBilling();
@@ -66,16 +77,48 @@ const InfoBar = (props: InfoBarProps) => {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <TooltipProvider>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger>
-            <Book />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Guide</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+
+      {/* Help Menu Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+            <HelpCircle className="w-5 h-5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuLabel>Help & Resources</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link
+              href="/docs"
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Book className="w-4 h-4" />
+              Documentation
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link
+              href="/privacy"
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Shield className="w-4 h-4" />
+              Privacy Policy
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              href="/terms"
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              Terms of Service
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <div className="flex items-center gap-4">
         <LogoutButton />
       </div>

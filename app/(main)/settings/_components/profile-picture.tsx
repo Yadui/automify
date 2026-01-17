@@ -3,12 +3,13 @@ import React, { useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { X, Upload } from "lucide-react";
+import { X, Upload, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ProfilePictureProps {
   userImage: string | null;
-  onDelete?: () => void;
-  onUpload: (file: File) => Promise<void> | void;
+  onDelete?: () => Promise<unknown> | void;
+  onUpload: (file: File) => Promise<{ success: boolean; error?: string }>;
 }
 
 const ProfilePicture: React.FC<ProfilePictureProps> = ({
@@ -18,23 +19,40 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
 }) => {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const onRemoveProfileImage = async () => {
     if (onDelete) {
-      onDelete();
+      await onDelete();
       router.refresh();
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      onUpload(file);
+      setIsUploading(true);
+      try {
+        const result = await onUpload(file);
+        if (result.success) {
+          toast.success("Profile image updated!");
+          router.refresh();
+        } else {
+          toast.error(result.error || "Failed to upload image");
+        }
+      } catch {
+        toast.error("Failed to upload image");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   const isValidImage =
-    userImage && (userImage.startsWith("http") || userImage.startsWith("/"));
+    userImage &&
+    (userImage.startsWith("http") ||
+      userImage.startsWith("/") ||
+      userImage.startsWith("data:"));
 
   return (
     <div className="flex flex-col">
@@ -49,7 +67,9 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
                 fill
                 className="object-contain"
                 unoptimized={
-                  userImage.startsWith("http") && !userImage.includes("vercel")
+                  userImage.startsWith("data:") ||
+                  (userImage.startsWith("http") &&
+                    !userImage.includes("vercel"))
                 }
               />
             </div>
@@ -73,9 +93,14 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2"
+              disabled={isUploading}
             >
-              <Upload className="w-4 h-4" />
-              Upload Image
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              {isUploading ? "Uploading..." : "Upload Image"}
             </Button>
           </div>
         )}

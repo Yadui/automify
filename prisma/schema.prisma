@@ -11,15 +11,16 @@ datasource db {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  email          String   @unique
-  name           String?
-  hashedPassword String?
-  profileImage   String?
-  tier           String   @default("Free")
-  credits        String   @default("10")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                  Int       @id @default(autoincrement())
+  email               String    @unique
+  name                String?
+  hashedPassword      String?
+  profileImage        String?
+  tier                String    @default("Free")
+  credits             String    @default("10")
+  deletionScheduledAt DateTime? // Null = active, set = scheduled for deletion after 48h
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   sessions    Session[]
   connections Connection[]

@@ -17,7 +17,6 @@ import {
   GitBranch,
   LucideMousePointerClick,
   ChevronRight,
-  Sparkles,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "../global/mode-toggle";
@@ -26,7 +25,7 @@ const Sidebar = () => {
   const pathName = usePathname();
 
   return (
-    <nav className="fixed left-4 top-1/2 -translate-y-1/2 h-[90vh] z-[50]">
+    <nav className="fixed left-4 pt-10 h-[calc(100vh-2rem)] z-[50]">
       <motion.div
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
@@ -41,8 +40,12 @@ const Sidebar = () => {
           {/* Logo / Brand */}
           <Link href="/dashboard" className="relative group">
             <div className="absolute -inset-2 bg-gradient-to-r from-[#E2CBFF] to-[#D1B3FF] rounded-full blur opacity-0 group-hover:opacity-40 transition-opacity" />
-            <div className="relative p-3 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-[#E2CBFF]" />
+            <div className="relative p-2 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden">
+              <img
+                src="../favicon.ico"
+                alt="Automify"
+                className="w-8 h-8 object-contain"
+              />
             </div>
           </Link>
 

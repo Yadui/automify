@@ -19,8 +19,22 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Fuzzie",
-  description: "create automation tools",
+  title: {
+    default: "Automify",
+    template: "%s | Automify",
+  },
+  description:
+    "Automate your workflows with powerful integrations. Connect Google, Discord, Notion, Slack and more.",
+  icons: {
+    icon: [{ url: "/favicon.ico" }, { url: "/favicon.png", type: "image/png" }],
+    apple: "/favicon.png",
+  },
+  openGraph: {
+    title: "Automify",
+    description: "Automate your workflows with powerful integrations",
+    siteName: "Automify",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -28,7 +42,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
       <body

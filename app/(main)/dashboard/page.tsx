@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { BackgroundLines } from "@/components/ui/background-lines";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/page-header";
 
 const DashboardPage = async () => {
   const { user } = await validateRequest();
@@ -72,16 +73,18 @@ const DashboardPage = async () => {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-background/50">
-      <div className="sticky top-0 z-[10] flex items-center justify-between border-b bg-background/50 p-6 backdrop-blur-lg">
-        <h1 className="text-4xl font-bold">Dashboard</h1>
+    <div className="flex flex-col min-h-screen">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your automation platform"
+      >
         <Link href="/workflows">
-          <Button className="bg-[#E2CBFF] text-black hover:bg-[#D1B3FF] font-semibold gap-2">
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2">
             <Plus className="w-4 h-4" />
             Create Workflow
           </Button>
         </Link>
-      </div>
+      </PageHeader>
 
       <div className="relative flex-1 overflow-visible">
         <BackgroundLines className="absolute inset-0 z-0 opacity-20">

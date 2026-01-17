@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { validateRequest } from "@/lib/auth";
 import db from "@/lib/db";
 import BillingDashboard from "./_components/billing-dashboard";
+import PageHeader from "@/components/page-header";
 
 type Props = {
   searchParams?: { [key: string]: string | undefined };
@@ -40,11 +41,14 @@ const Billing = async (props: Props) => {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="sticky top-0 z-[10] pt-20 flex items-center justify-between border-b bg-background/50 p-6 text-4xl backdrop-blur-lg">
-        <span>Billing</span>
-      </h1>
-      <BillingDashboard />
+    <div className="flex flex-col min-h-screen">
+      <PageHeader
+        title="Billing"
+        description="Manage your subscription and payment methods"
+      />
+      <div className="flex-1 p-6">
+        <BillingDashboard />
+      </div>
     </div>
   );
 };

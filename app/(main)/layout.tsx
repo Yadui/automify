@@ -11,13 +11,18 @@ const Layout = (props: Props) => {
   const isEditor = pathname.includes("/editor/");
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden ml-28">
-        {!isEditor && <InfoBar />}
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Full-width InfoBar at the top */}
+      {!isEditor && <InfoBar />}
+
+      {/* Sidebar + Content below the InfoBar */}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
         <main
           className={
-            isEditor ? "flex-1 overflow-hidden" : "flex-1 overflow-auto p-4"
+            isEditor
+              ? "flex-1 overflow-hidden ml-28"
+              : "flex-1 overflow-auto ml-28"
           }
         >
           {props.children}
