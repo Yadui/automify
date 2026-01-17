@@ -59,6 +59,7 @@ const Sidebar = () => {
                     <TooltipTrigger asChild>
                       <Link
                         href={menuItem.href}
+                        prefetch={true}
                         className="relative group p-3 rounded-2xl transition-all"
                       >
                         {isActive && (
