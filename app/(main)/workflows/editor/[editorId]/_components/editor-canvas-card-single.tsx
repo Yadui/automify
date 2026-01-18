@@ -339,31 +339,36 @@ const EditorCanvasCardSingle = ({
           </div>
         )}
       </Card>
-      <CustomHandle type="source" position={Position.Bottom} id="a" />
 
-      {/* Contextual Plus Button at the bottom of the node - always visible unless node has outgoing edge */}
-      {!state.editor.edges.some((edge) => edge.source === nodeId) && (
-        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex items-center justify-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              dispatch({
-                type: "OPEN_ADD_MODAL",
-                payload: {
-                  position: {
-                    x: xPos,
-                    y: yPos + 200, // Move it 200px down
-                  },
-                  sourceNodeId: nodeId || undefined,
-                },
-              });
-            }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:scale-110 transition-transform border-2 border-background"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Source handle at bottom - hidden for End nodes */}
+      {data.type !== "End" && (
+        <CustomHandle type="source" position={Position.Bottom} id="a" />
       )}
+
+      {/* Contextual Plus Button at the bottom of the node - hidden for End nodes and when node has outgoing edge */}
+      {data.type !== "End" &&
+        !state.editor.edges.some((edge) => edge.source === nodeId) && (
+          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                dispatch({
+                  type: "OPEN_ADD_MODAL",
+                  payload: {
+                    position: {
+                      x: xPos,
+                      y: yPos + 200, // Move it 200px down
+                    },
+                    sourceNodeId: nodeId || undefined,
+                  },
+                });
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:scale-110 transition-transform border-2 border-background"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
       {/* Rename Dialog */}
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>

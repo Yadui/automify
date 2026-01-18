@@ -9,14 +9,22 @@ export async function GET(request: Request) {
   }
 
   const baseUrl = getSafeBaseUrl(request);
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get("returnUrl") || "/connections";
+
+  // Encode returnUrl in state parameter
+  const state = Buffer.from(JSON.stringify({ returnUrl })).toString("base64");
+
   const clientId = process.env.SLACK_CLIENT_ID;
   const redirectUri =
     process.env.SLACK_REDIRECT_URI || `${baseUrl}/api/oauth/slack/callback`;
-  const scope = "channels:read,chat:write,commands,incoming-webhook"; // Example scopes
+  const scope = "channels:read,chat:write,commands,incoming-webhook";
 
-  const url = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${encodeURIComponent(
+  const authUrl = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${encodeURIComponent(
     scope
-  )}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  )}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(
+    state
+  )}`;
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(authUrl);
 }

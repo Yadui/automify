@@ -120,11 +120,6 @@ export const EditorCanvasDefaultCardTypes = {
     type: "Trigger",
   },
   Notion: { description: "Create entries directly in notion.", type: "Action" },
-  "Custom Webhook": {
-    description:
-      "Connect any app that has an API key and send data to your applicaiton.",
-    type: "Action",
-  },
   Discord: {
     description: "Post messages to your discord server",
     type: "Action",
@@ -142,7 +137,7 @@ export const EditorCanvasDefaultCardTypes = {
     type: "Action",
   },
   Wait: {
-    description: "Delay the next action step by using the wait timer.",
+    description: "Pause workflow for a duration or until a specific time.",
     type: "Action",
   },
   "HTTP Request": {
@@ -150,13 +145,9 @@ export const EditorCanvasDefaultCardTypes = {
     type: "Action",
   },
   Webhook: {
-    description: "Receive data from external services via a unique URL.",
-    type: "Trigger",
-  },
-  Delay: {
     description:
-      "Pause the workflow for a specified duration or untill a specific time.",
-    type: "Action",
+      "Start workflow when HTTP request is received at your unique URL.",
+    type: "Trigger",
   },
   "Data Transform": {
     description: "Modify, format, or restructure data between steps.",
@@ -168,6 +159,10 @@ export const EditorCanvasDefaultCardTypes = {
   },
   "Toast Message": {
     description: "Display a toast message in the browser.",
+    type: "Action",
+  },
+  End: {
+    description: "Explicitly terminate the workflow execution.",
     type: "Action",
   },
 };

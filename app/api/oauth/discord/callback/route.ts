@@ -12,6 +12,18 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+
+  // Parse returnUrl from state
+  let returnUrl = "/connections";
+  if (state) {
+    try {
+      const decoded = JSON.parse(Buffer.from(state, "base64").toString());
+      returnUrl = decoded.returnUrl || "/connections";
+    } catch {
+      // Invalid state, use default
+    }
+  }
 
   if (!code) {
     return NextResponse.json({ error: "No code provided" }, { status: 400 });
@@ -93,7 +105,8 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.redirect(`${baseUrl}/connections`);
+    // Redirect to original page
+    return NextResponse.redirect(`${baseUrl}${returnUrl}`);
   } catch (error: any) {
     console.error(
       "Discord OAuth Callback Error:",

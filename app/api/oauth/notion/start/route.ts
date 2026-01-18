@@ -9,14 +9,19 @@ export async function GET(request: Request) {
   }
 
   const baseUrl = getSafeBaseUrl(request);
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get("returnUrl") || "/connections";
+
+  // Encode returnUrl in state parameter
+  const state = Buffer.from(JSON.stringify({ returnUrl })).toString("base64");
+
   const clientId = process.env.NOTION_CLIENT_ID;
   const redirectUri =
     process.env.NOTION_REDIRECT_URI || `${baseUrl}/api/oauth/notion/callback`;
 
-  // Notion OAuth URL format
-  const url = `https://api.notion.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&owner=user&redirect_uri=${encodeURIComponent(
+  const authUrl = `https://api.notion.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&owner=user&redirect_uri=${encodeURIComponent(
     redirectUri
-  )}`;
+  )}&state=${encodeURIComponent(state)}`;
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(authUrl);
 }

@@ -24,10 +24,38 @@ const AddStepModal = () => {
   );
 
   const onSelectApp = (type: string, app: any) => {
+    // Calculate proper position for the new node
+    let nodePosition = state.editor.addModalPosition;
+
+    // If splitting an edge, position node between source and target
+    if (state.editor.activeEdgeId) {
+      const edge = state.editor.edges.find(
+        (e) => e.id === state.editor.activeEdgeId
+      );
+      if (edge) {
+        const sourceNode = state.editor.elements.find(
+          (n) => n.id === edge.source
+        );
+        const targetNode = state.editor.elements.find(
+          (n) => n.id === edge.target
+        );
+        if (sourceNode && targetNode) {
+          // Position new node between source and target
+          nodePosition = {
+            x: (sourceNode.position.x + targetNode.position.x) / 2,
+            y: (sourceNode.position.y + targetNode.position.y) / 2,
+          };
+          // Also shift the target node down to make room
+          const shiftAmount = 150; // Pixels to shift target node down
+          targetNode.position.y += shiftAmount;
+        }
+      }
+    }
+
     const newNode: EditorNodeType = {
       id: v4(),
       type: type as EditorCanvasTypes,
-      position: state.editor.addModalPosition,
+      position: nodePosition,
       data: {
         title: type,
         description: app.description,

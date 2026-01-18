@@ -12,7 +12,7 @@ export default function PageHeader({
   children,
 }: PageHeaderProps) {
   return (
-    <div className="sticky top-0 z-[10] bg-background/80 backdrop-blur-lg border-b border-border">
+    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border">
       <div className="px-6 py-6">
         <div className="flex items-center justify-between">
           <div>

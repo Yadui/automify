@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,14 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useEditor } from "@/providers/editor-provider";
 import React, { useState } from "react";
 import KeyValueInput from "./key-value-input";
 import SmartInput from "../smart-input";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Globe, Key, Loader2, Shield } from "lucide-react";
 import axios from "axios";
+
+interface KeyValue {
+  key: string;
+  value: string;
+}
 
 const HttpRequestWizard = () => {
   const { state, dispatch } = useEditor();
@@ -31,41 +37,71 @@ const HttpRequestWizard = () => {
 
   const [method, setMethod] = useState(metadata.method || "GET");
   const [url, setUrl] = useState(metadata.url || "");
-  const [headers, setHeaders] = useState(metadata.headers || []);
+  const [headers, setHeaders] = useState<KeyValue[]>(metadata.headers || []);
+  const [queryParams, setQueryParams] = useState<KeyValue[]>(
+    metadata.queryParams || []
+  );
   const [body, setBody] = useState(metadata.body || "");
+  const [authType, setAuthType] = useState(metadata.authType || "none");
+  const [apiKeyName, setApiKeyName] = useState(
+    metadata.apiKeyName || "X-API-Key"
+  );
+  const [apiKeyValue, setApiKeyValue] = useState(metadata.apiKeyValue || "");
+  const [bearerToken, setBearerToken] = useState(metadata.bearerToken || "");
+  const [timeout, setTimeout] = useState(metadata.timeout || 30);
   const [testResult, setTestResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleTest = async () => {
     setIsLoading(true);
     try {
-      // In a real app, this would be a server action to avoid CORS issues
-      // For now, we'll try a direct calls or mock it if it fails due to CORS
-      // Ideally, we create an action `executeHttpRequest`
+      // Build headers with auth
+      const requestHeaders: Record<string, string> = headers.reduce(
+        (acc, curr) => ({ ...acc, [curr.key]: curr.value }),
+        {}
+      );
+
+      if (authType === "api_key" && apiKeyValue) {
+        requestHeaders[apiKeyName] = apiKeyValue;
+      } else if (authType === "bearer" && bearerToken) {
+        requestHeaders["Authorization"] = `Bearer ${bearerToken}`;
+      }
+
+      // Build query string
+      const queryString = queryParams
+        .filter((q) => q.key)
+        .map(
+          (q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`
+        )
+        .join("&");
+      const finalUrl = queryString ? `${url}?${queryString}` : url;
 
       const response = await axios({
         method,
-        url,
-        headers: headers.reduce(
-          (acc: any, curr: any) => ({ ...acc, [curr.key]: curr.value }),
-          {}
-        ),
+        url: finalUrl,
+        headers: requestHeaders,
         data: body ? JSON.parse(body) : undefined,
+        timeout: timeout * 1000,
       });
 
       setTestResult({
-        status: response.status,
-        data: response.data,
+        success: true,
+        statusCode: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        body: response.data,
+        duration: "~",
       });
-      toast.success("Request successful");
+      toast.success(`Request successful: ${response.status}`);
     } catch (error: any) {
       console.error(error);
       setTestResult({
+        success: false,
         error: error.message,
         response: error.response
           ? {
-              status: error.response.status,
-              data: error.response.data,
+              statusCode: error.response.status,
+              body: error.response.data,
             }
           : undefined,
       });
@@ -76,6 +112,11 @@ const HttpRequestWizard = () => {
   };
 
   const handleSave = () => {
+    if (!url) {
+      toast.error("URL is required");
+      return;
+    }
+
     dispatch({
       type: "UPDATE_NODE",
       payload: {
@@ -91,8 +132,14 @@ const HttpRequestWizard = () => {
                   method,
                   url,
                   headers,
+                  queryParams,
                   body,
-                  eventLabel: `${method} ${url}`, // Descriptive label
+                  authType,
+                  apiKeyName,
+                  apiKeyValue,
+                  bearerToken,
+                  timeout,
+                  eventLabel: `${method} ${new URL(url).hostname}`,
                 },
               },
             };
@@ -105,59 +152,130 @@ const HttpRequestWizard = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-4 p-4">
       <Card>
-        <CardHeader>
-          <CardTitle>HTTP Request Settings</CardTitle>
-          <CardDescription>
-            Configure the details of your HTTP request.
-          </CardDescription>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            HTTP Request
+          </CardTitle>
+          <CardDescription>Call external APIs and services.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Method & URL */}
+          <div className="flex gap-2">
+            <div className="w-28">
+              <Select value={method} onValueChange={setMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <SmartInput
+                value={url}
+                onChange={setUrl}
+                placeholder="https://api.example.com/endpoint"
+              />
+            </div>
+          </div>
+
+          {/* Authentication */}
           <div className="grid gap-2">
-            <Label>Method</Label>
-            <Select value={method} onValueChange={setMethod}>
+            <Label className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Authentication
+            </Label>
+            <Select value={authType} onValueChange={setAuthType}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="GET">GET</SelectItem>
-                <SelectItem value="POST">POST</SelectItem>
-                <SelectItem value="PUT">PUT</SelectItem>
-                <SelectItem value="PATCH">PATCH</SelectItem>
-                <SelectItem value="DELETE">DELETE</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="api_key">API Key</SelectItem>
+                <SelectItem value="bearer">Bearer Token</SelectItem>
               </SelectContent>
             </Select>
+
+            {authType === "api_key" && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={apiKeyName}
+                  onChange={(e) => setApiKeyName(e.target.value)}
+                  placeholder="Header name"
+                  className="w-32"
+                />
+                <SmartInput
+                  value={apiKeyValue}
+                  onChange={setApiKeyValue}
+                  placeholder="API key value"
+                  className="flex-1"
+                />
+              </div>
+            )}
+
+            {authType === "bearer" && (
+              <SmartInput
+                value={bearerToken}
+                onChange={setBearerToken}
+                placeholder="Bearer token"
+                className="mt-2"
+              />
+            )}
           </div>
 
-          <div className="grid gap-2">
-            <Label>URL</Label>
-            <SmartInput
-              value={url}
-              onChange={setUrl}
-              placeholder="https://api.example.com/v1/resource"
-            />
-          </div>
+          {/* Query Parameters */}
+          <KeyValueInput
+            items={queryParams}
+            onChange={setQueryParams}
+            title="Query Parameters"
+          />
 
+          {/* Headers */}
           <KeyValueInput
             items={headers}
             onChange={setHeaders}
             title="Headers"
           />
 
-          <div className="grid gap-2">
-            <Label>Body (JSON)</Label>
-            <SmartInput
-              type="textarea"
-              value={body}
-              onChange={setBody}
-              placeholder='{"key": "value"}'
-              className="font-mono text-xs h-32"
+          {/* Body */}
+          {["POST", "PUT", "PATCH"].includes(method) && (
+            <div className="grid gap-2">
+              <Label>Request Body (JSON)</Label>
+              <SmartInput
+                type="textarea"
+                value={body}
+                onChange={setBody}
+                placeholder='{"key": "value"}'
+                className="font-mono text-xs h-24"
+              />
+            </div>
+          )}
+
+          {/* Timeout */}
+          <div className="flex items-center gap-2">
+            <Label className="whitespace-nowrap">Timeout:</Label>
+            <Input
+              type="number"
+              value={timeout}
+              onChange={(e) => setTimeout(Number(e.target.value))}
+              className="w-20"
+              min={1}
+              max={60}
             />
+            <span className="text-sm text-muted-foreground">seconds</span>
           </div>
         </CardContent>
       </Card>
 
+      {/* Actions */}
       <div className="flex gap-2">
         <Button
           onClick={handleTest}
@@ -169,22 +287,38 @@ const HttpRequestWizard = () => {
           Test Request
         </Button>
         <Button onClick={handleSave} disabled={!testResult} className="flex-1">
-          Save Configuration
+          Save
         </Button>
       </div>
 
+      {/* Test Result */}
       {testResult && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="text-sm">Test Output</CardTitle>
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle
+              className={`text-sm ${
+                testResult.success ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {testResult.success
+                ? `✓ ${testResult.statusCode} ${testResult.statusText}`
+                : `✗ ${testResult.error}`}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-60">
-              {JSON.stringify(testResult, null, 2)}
+          <CardContent className="pb-3">
+            <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-48">
+              {JSON.stringify(testResult.body || testResult.response, null, 2)}
             </pre>
           </CardContent>
         </Card>
       )}
+
+      {/* Output Info */}
+      <div className="p-3 bg-muted/30 rounded-lg border text-xs text-muted-foreground">
+        <p>
+          <strong>Output:</strong> statusCode, headers, body, success, duration
+        </p>
+      </div>
     </div>
   );
 };

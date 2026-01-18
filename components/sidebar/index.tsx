@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -20,12 +20,21 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "../global/mode-toggle";
+import UserMenu from "../global/user-menu";
 
-const Sidebar = () => {
+interface SidebarProps {
+  user?: {
+    name: string | null;
+    email: string;
+    profileImage: string | null;
+  };
+}
+
+const Sidebar = ({ user }: SidebarProps) => {
   const pathName = usePathname();
 
   return (
-    <nav className="fixed left-4 pt-10 h-[calc(100vh-2rem)] z-[50]">
+    <nav className="fixed left-4 pt-10 h-[90vh] z-[50]">
       <motion.div
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
@@ -36,7 +45,7 @@ const Sidebar = () => {
           "shadow-[0px_0px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-500 w-20"
         )}
       >
-        <div className="flex flex-col items-center gap-12 w-full">
+        <div className="flex flex-col items-center gap-12 w-full flex-1">
           {/* Logo / Brand */}
           <Link href="/dashboard" className="relative group">
             <div className="absolute -inset-2 bg-gradient-to-r from-[#E2CBFF] to-[#D1B3FF] rounded-full blur opacity-0 group-hover:opacity-40 transition-opacity" />
@@ -53,7 +62,7 @@ const Sidebar = () => {
           <ModeToggle />
 
           {/* Nav Items */}
-          <div className="flex flex-col items-center gap-4 w-full h-full pb-36">
+          <div className="flex flex-col items-center gap-4 w-full">
             <TooltipProvider>
               {menuOptions.map((menuItem) => {
                 const isActive = pathName === menuItem.href;
@@ -101,6 +110,14 @@ const Sidebar = () => {
             </TooltipProvider>
           </div>
         </div>
+
+        {/* User Menu at Bottom */}
+        {user && (
+          <div className="mt-auto pt-4">
+            <Separator className="bg-neutral-800/50 w-full mb-4" />
+            <UserMenu user={user} />
+          </div>
+        )}
       </motion.div>
     </nav>
   );

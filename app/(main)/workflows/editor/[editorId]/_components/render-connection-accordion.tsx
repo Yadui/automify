@@ -10,6 +10,7 @@ import { useFuzzieStore } from "@/store";
 import { getGoogleConnection } from "@/app/(main)/connections/_actions/google-connection";
 import { getNotionConnection } from "@/app/(main)/connections/_actions/notion-connection";
 import { getDiscordConnectionUrl } from "@/app/(main)/connections/_actions/discord-connections";
+import { usePathname } from "next/navigation";
 
 const RenderConnectionAccordion = ({
   connection,
@@ -31,6 +32,9 @@ const RenderConnectionAccordion = ({
   const { nodeConnection } = useNodeConnections();
   const { slackChannels, selectedSlackChannels, setSelectedSlackChannels } =
     useFuzzieStore();
+
+  // Get current path for returnUrl
+  const pathname = usePathname();
 
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
@@ -138,6 +142,7 @@ const RenderConnectionAccordion = ({
             type={title}
             connected={{ [title]: Boolean(isConnected) }}
             connectedId={connectedId}
+            returnUrl={pathname}
           />
           {slackSpecial && isConnected && (
             <div className="p-6">

@@ -2,13 +2,35 @@
 import InfoBar from "@/components/infobar";
 import Sidebar from "@/components/sidebar";
 import { usePathname } from "next/navigation";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getUserInfo } from "./_actions/user-info";
 
 type Props = { children: React.ReactNode };
+
+type UserInfo = {
+  name: string | null;
+  email: string;
+  profileImage: string | null;
+};
 
 const Layout = (props: Props) => {
   const pathname = usePathname();
   const isEditor = pathname.includes("/editor/");
+  const [user, setUser] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const response = await getUserInfo();
+      if (response) {
+        setUser({
+          name: response.name || null,
+          email: response.email || "",
+          profileImage: response.profileImage || null,
+        });
+      }
+    };
+    fetchUser();
+  }, []);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -17,7 +39,7 @@ const Layout = (props: Props) => {
 
       {/* Sidebar + Content below the InfoBar */}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        <Sidebar user={user || undefined} />
         <main
           className={
             isEditor

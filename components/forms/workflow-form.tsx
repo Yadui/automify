@@ -42,7 +42,8 @@ const Workflowform = ({ subTitle, title }: Props) => {
     },
   });
 
-  const isLoading = form.formState.isLoading;
+  // Use isSubmitting to track async form submission and lock button
+  const isSubmitting = form.formState.isSubmitting;
   const router = useRouter();
 
   const handleSubmit = async (values: z.infer<typeof WorkflowFormSchema>) => {
@@ -69,7 +70,7 @@ const Workflowform = ({ subTitle, title }: Props) => {
             className="flex flex-col gap-4 text-left"
           >
             <FormField
-              disabled={isLoading}
+              disabled={isSubmitting}
               control={form.control}
               name="name"
               render={({ field }) => (
@@ -83,7 +84,7 @@ const Workflowform = ({ subTitle, title }: Props) => {
               )}
             />
             <FormField
-              disabled={isLoading}
+              disabled={isSubmitting}
               control={form.control}
               name="description"
               render={({ field }) => (
@@ -96,10 +97,10 @@ const Workflowform = ({ subTitle, title }: Props) => {
                 </FormItem>
               )}
             />
-            <Button className="mt-4" disabled={isLoading} type="submit">
-              {isLoading ? (
+            <Button className="mt-4" disabled={isSubmitting} type="submit">
+              {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
                 </>
               ) : (
                 "Save Settings"

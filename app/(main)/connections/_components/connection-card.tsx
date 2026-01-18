@@ -8,14 +8,14 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-// Define a specific type for props instead of using any
 interface ConnectionCardProps {
   description: string;
   title: string;
   icon: string;
   type: string;
-  connected: { [key: string]: boolean }; // Define the type for connected
+  connected: { [key: string]: boolean };
   connectedId?: string;
+  returnUrl?: string; // Optional return URL for OAuth callback
 }
 
 const ConnectionCard: React.FC<ConnectionCardProps> = ({
@@ -25,7 +25,37 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
   type,
   connected,
   connectedId,
+  returnUrl,
 }) => {
+  // Helper to build OAuth URL with optional returnUrl
+  const getOAuthUrl = (provider: string): string => {
+    let base = "";
+    switch (provider) {
+      case "Discord":
+        base = "/api/oauth/discord/start";
+        break;
+      case "Notion":
+        base = "/api/oauth/notion/start";
+        break;
+      case "Slack":
+        base = "/api/oauth/slack/start";
+        break;
+      case "Google Drive":
+      case "Gmail":
+        base = "/api/oauth/google/start";
+        break;
+      case "GitHub":
+        base = "/api/auth/github/start";
+        break;
+      default:
+        return "#";
+    }
+    if (returnUrl) {
+      return `${base}?returnUrl=${encodeURIComponent(returnUrl)}`;
+    }
+    return base;
+  };
+
   return (
     <Card className="flex w-full items-center justify-between">
       <CardHeader className="flex flex-col gap-4">
@@ -55,19 +85,7 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
               )}
             </div>
             <Link
-              href={
-                title === "Discord"
-                  ? "/api/oauth/discord/start"
-                  : title === "Notion"
-                  ? "/api/oauth/notion/start"
-                  : title === "Slack"
-                  ? "/api/oauth/slack/start"
-                  : title === "Google Drive" || title === "Gmail"
-                  ? "/api/oauth/google/start"
-                  : title === "GitHub"
-                  ? "/api/auth/github/start"
-                  : "#"
-              }
+              href={getOAuthUrl(title)}
               className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
             >
               Refresh
@@ -75,19 +93,7 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
           </>
         ) : (
           <Link
-            href={
-              title === "Discord"
-                ? "/api/oauth/discord/start"
-                : title === "Notion"
-                ? "/api/oauth/notion/start"
-                : title === "Slack"
-                ? "/api/oauth/slack/start"
-                : title === "Google Drive" || title === "Gmail"
-                ? "/api/oauth/google/start"
-                : title === "GitHub"
-                ? "/api/auth/github/start"
-                : "#"
-            }
+            href={getOAuthUrl(title)}
             className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
           >
             Connect

@@ -56,7 +56,8 @@ const APP_EVENTS: Record<string, { label: string; value: string }[]> = {
 
 import HttpRequestWizard from "./core-primitives/http-request-wizard";
 import WebhookWizard from "./core-primitives/webhook-wizard";
-import DelayWizard from "./core-primitives/delay-wizard";
+import WaitWizard from "./core-primitives/wait-wizard";
+import EndWizard from "./core-primitives/end-wizard";
 import ConditionWizard from "./core-primitives/condition-wizard";
 import DataTransformWizard from "./core-primitives/data-transform-wizard";
 import KVStorageWizard from "./core-primitives/kv-storage-wizard";
@@ -149,8 +150,11 @@ const EditorCanvasSidebar = () => {
   if (selectedNode.data.type === "Webhook") {
     return renderWizardInSidebar(WebhookWizard);
   }
-  if (selectedNode.data.type === "Delay") {
-    return renderWizardInSidebar(DelayWizard);
+  if (selectedNode.data.type === "Wait") {
+    return renderWizardInSidebar(WaitWizard);
+  }
+  if (selectedNode.data.type === "End") {
+    return renderWizardInSidebar(EndWizard);
   }
   if (selectedNode.data.type === "Condition") {
     return renderWizardInSidebar(ConditionWizard);

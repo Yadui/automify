@@ -154,6 +154,14 @@ const EditorCanvas = () => {
     }
   }, [state.editor.elements.length]);
 
+  // Sync global edges to local state (for modal edge updates)
+  useEffect(() => {
+    // Check if global edges differ from local (edge was split by modal)
+    if (state.editor.edges.length !== edges.length) {
+      setEdges(state.editor.edges);
+    }
+  }, [state.editor.edges]);
+
   // Sync local edges to global state
   useEffect(() => {
     if (edges.length > 0 || state.editor.edges.length === 0) {
@@ -263,6 +271,37 @@ const EditorCanvas = () => {
                     size={1}
                   />
                 </ReactFlow>
+
+                {/* Top-right Add Node button - hidden when sidebar is open */}
+                {!state.editor.isSidebarOpen &&
+                  state.editor.elements.length > 0 && (
+                    <div className="absolute top-4 right-4 z-10">
+                      <Button
+                        onClick={() => {
+                          // Get the last node's position to place the new one below it
+                          const lastNode =
+                            state.editor.elements[
+                              state.editor.elements.length - 1
+                            ];
+                          const newY = lastNode
+                            ? lastNode.position.y + 200
+                            : 200;
+                          const newX = lastNode ? lastNode.position.x : 250;
+                          dispatch({
+                            type: "OPEN_ADD_MODAL",
+                            payload: {
+                              position: { x: newX, y: newY },
+                              sourceNodeId: lastNode?.id,
+                            },
+                          });
+                        }}
+                        className="gap-2 shadow-lg"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Node
+                      </Button>
+                    </div>
+                  )}
 
                 {state.editor.elements.length === 0 &&
                   !state.editor.isAddModalOpen && (
