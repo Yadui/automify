@@ -41,15 +41,15 @@ const Sidebar = ({ user }: SidebarProps) => {
         transition={{ duration: 0.5, ease: "circOut" }}
         className={clsx(
           "h-full flex flex-col items-center justify-between py-8 px-4",
-          "bg-black/40 backdrop-blur-2xl border border-neutral-800/50 rounded-[2.5rem]",
-          "shadow-[0px_0px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-500 w-20"
+          "bg-card/40 backdrop-blur-2xl border border-border",
+          "shadow-xl transition-all duration-500 w-20",
         )}
       >
         <div className="flex flex-col items-center gap-12 w-full flex-1">
           {/* Logo / Brand */}
           <Link href="/dashboard" className="relative group">
-            <div className="absolute -inset-2 bg-gradient-to-r from-[#E2CBFF] to-[#D1B3FF] rounded-full blur opacity-0 group-hover:opacity-40 transition-opacity" />
-            <div className="relative p-2 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center overflow-hidden">
+            <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 to-primary/10 rounded-full blur opacity-0 group-hover:opacity-40 transition-opacity" />
+            <div className="relative p-2 rounded-2xl bg-muted border border-border flex items-center justify-center overflow-hidden hover:bg-accent transition-colors">
               <img
                 src="../favicon.ico"
                 alt="Automify"
@@ -58,7 +58,7 @@ const Sidebar = ({ user }: SidebarProps) => {
             </div>
           </Link>
 
-          <Separator className="bg-neutral-800/50 w-full" />
+          <Separator className="bg-border w-full" />
           <ModeToggle />
 
           {/* Nav Items */}
@@ -77,11 +77,11 @@ const Sidebar = ({ user }: SidebarProps) => {
                         {isActive && (
                           <motion.div
                             layoutId="activeTab"
-                            className="absolute inset-0 bg-neutral-800/50 border border-neutral-700/50 rounded-2xl"
+                            className="absolute inset-0 bg-accent border border-primary/20 rounded-2xl"
                             transition={{
                               type: "spring",
                               bounce: 0.2,
-                              duration: 0.6,
+                              duration: 0.3,
                             }}
                           />
                         )}
@@ -89,18 +89,18 @@ const Sidebar = ({ user }: SidebarProps) => {
                           className={clsx(
                             "relative transition-colors duration-300",
                             isActive
-                              ? "text-[#E2CBFF]"
-                              : "text-neutral-500 group-hover:text-neutral-300"
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-foreground",
                           )}
                         >
-                          <menuItem.Component selected={isActive} />
+                          <menuItem.Component className="w-6 h-6 stroke-[1.5]" />
                         </div>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
                       sideOffset={20}
-                      className="bg-black/90 text-white border-neutral-800 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs"
+                      className="bg-popover text-popover-foreground border-border backdrop-blur-md px-3 py-1.5 rounded-lg text-xs"
                     >
                       {menuItem.name}
                     </TooltipContent>
@@ -114,7 +114,7 @@ const Sidebar = ({ user }: SidebarProps) => {
         {/* User Menu at Bottom */}
         {user && (
           <div className="mt-auto pt-4">
-            <Separator className="bg-neutral-800/50 w-full mb-4" />
+            <Separator className="bg-border w-full mb-4" />
             <UserMenu user={user} />
           </div>
         )}

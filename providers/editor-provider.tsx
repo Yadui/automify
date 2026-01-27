@@ -74,9 +74,28 @@ const initialState: EditorState = {
   history: initialHistoryState,
 };
 
+// Helper to push current editor state to history (max 50 entries)
+const pushToHistory = (state: EditorState, newEditor: Editor): HistoryState => {
+  const MAX_HISTORY = 50;
+  // Slice history up to current index (discard redo stack)
+  const newHistory = state.history.history.slice(
+    0,
+    state.history.currentIndex + 1,
+  );
+  newHistory.push({ ...newEditor });
+  // Limit history size
+  if (newHistory.length > MAX_HISTORY) {
+    newHistory.shift();
+  }
+  return {
+    history: newHistory,
+    currentIndex: newHistory.length - 1,
+  };
+};
+
 const editorReducer = (
   state: EditorState = initialState,
-  action: EditorActions
+  action: EditorActions,
 ): EditorState => {
   switch (action.type) {
     case "REDO":
@@ -111,15 +130,23 @@ const editorReducer = (
       }
       return state;
 
-    case "LOAD_DATA":
+    case "LOAD_DATA": {
+      const newEditor = {
+        ...state.editor,
+        elements: action.payload.elements || initialEditorState.elements,
+        edges: action.payload.edges,
+      };
+      // Skip history push if this is initial load (empty state)
+      const isInitialLoad =
+        state.editor.elements.length === 0 && state.editor.edges.length === 0;
       return {
         ...state,
-        editor: {
-          ...state.editor,
-          elements: action.payload.elements || initialEditorState.elements,
-          edges: action.payload.edges,
-        },
+        editor: newEditor,
+        history: isInitialLoad
+          ? state.history
+          : pushToHistory(state, newEditor),
       };
+    }
     case "SELECTED_ELEMENT":
       return {
         ...state,
@@ -158,18 +185,21 @@ const editorReducer = (
           isSidebarOpen: action.payload.open,
         },
       };
-    case "UPDATE_NODE":
+    case "UPDATE_NODE": {
+      const newEditor = {
+        ...state.editor,
+        elements: action.payload.elements,
+        selectedNode:
+          action.payload.elements.find(
+            (el) => el.id === state.editor.selectedNode.id,
+          ) || state.editor.selectedNode,
+      };
       return {
         ...state,
-        editor: {
-          ...state.editor,
-          elements: action.payload.elements,
-          selectedNode:
-            action.payload.elements.find(
-              (el) => el.id === state.editor.selectedNode.id
-            ) || state.editor.selectedNode,
-        },
+        editor: newEditor,
+        history: pushToHistory(state, newEditor),
       };
+    }
     case "COPY_NODE":
       return {
         ...state,
@@ -178,21 +208,24 @@ const editorReducer = (
           clipboard: action.payload.node,
         },
       };
-    case "PASTE_NODE":
+    case "PASTE_NODE": {
       if (!state.editor.clipboard) return state;
       const pastedNode: EditorNode = {
         ...state.editor.clipboard,
         id: uuidv4(),
         position: action.payload.position,
       };
+      const newEditorPaste = {
+        ...state.editor,
+        elements: [...state.editor.elements, pastedNode],
+      };
       return {
         ...state,
-        editor: {
-          ...state.editor,
-          elements: [...state.editor.elements, pastedNode],
-        },
+        editor: newEditorPaste,
+        history: pushToHistory(state, newEditorPaste),
       };
-    case "DUPLICATE_NODE":
+    }
+    case "DUPLICATE_NODE": {
       const duplicatedNode: EditorNode = {
         ...action.payload.node,
         id: uuidv4(),
@@ -201,13 +234,43 @@ const editorReducer = (
           y: action.payload.node.position.y + 100,
         },
       };
+      const newEditorDup = {
+        ...state.editor,
+        elements: [...state.editor.elements, duplicatedNode],
+      };
       return {
         ...state,
-        editor: {
-          ...state.editor,
-          elements: [...state.editor.elements, duplicatedNode],
-        },
+        editor: newEditorDup,
+        history: pushToHistory(state, newEditorDup),
       };
+    }
+    case "DELETE_NODE": {
+      const nodeIdToDelete = action.payload.nodeId;
+      const newElements = state.editor.elements.filter(
+        (el) => el.id !== nodeIdToDelete,
+      );
+      const newEdges = state.editor.edges.filter(
+        (e) => e.source !== nodeIdToDelete && e.target !== nodeIdToDelete,
+      );
+      const newEditorDel = {
+        ...state.editor,
+        elements: newElements,
+        edges: newEdges,
+        selectedNode:
+          state.editor.selectedNode.id === nodeIdToDelete
+            ? initialEditorState.selectedNode
+            : state.editor.selectedNode,
+        isSidebarOpen:
+          state.editor.selectedNode.id === nodeIdToDelete
+            ? false
+            : state.editor.isSidebarOpen,
+      };
+      return {
+        ...state,
+        editor: newEditorDel,
+        history: pushToHistory(state, newEditorDel),
+      };
+    }
     case "SET_NODE_RUN_STATUS":
       return {
         ...state,
@@ -255,10 +318,21 @@ export const EditorContext = createContext<{
 
 type EditorProps = {
   children: React.ReactNode;
+  initialData?: {
+    elements: EditorNodeType[];
+    edges: { id: string; source: string; target: string }[];
+  };
 };
 
 const EditorProvider = (props: EditorProps) => {
-  const [state, dispatch] = useReducer(editorReducer, initialState);
+  const [state, dispatch] = useReducer(editorReducer, {
+    ...initialState,
+    editor: {
+      ...initialState.editor,
+      elements: props.initialData?.elements || initialState.editor.elements,
+      edges: props.initialData?.edges || initialState.editor.edges,
+    },
+  });
 
   return (
     <EditorContext.Provider

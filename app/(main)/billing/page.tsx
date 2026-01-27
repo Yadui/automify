@@ -34,14 +34,14 @@ const Billing = async (props: Props) => {
           session.data[0].description == "Unlimited"
             ? "Unlimited"
             : session.data[0].description == "Pro"
-            ? "100"
-            : "10",
+              ? "100"
+              : "10",
       },
     });
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-[90vh] w-[92vw]">
       <PageHeader
         title="Billing"
         description="Manage your subscription and payment methods"

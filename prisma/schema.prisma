@@ -19,13 +19,16 @@ model User {
   tier                String    @default("Free")
   credits             String    @default("10")
   deletionScheduledAt DateTime? // Null = active, set = scheduled for deletion after 48h
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  googleResourceId         String?
+  googleResourceExpiration DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   sessions    Session[]
   connections Connection[]
   workflows   Workflow[]
 }
+
 
 model Session {
   id        String   @id
@@ -92,4 +95,16 @@ model Workflow {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   webhooks WebhookSubscription[]
+  logs     WorkflowLog[]
 }
+
+model WorkflowLog {
+  id         String   @id @default(uuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status     String // "Success" | "Failure"
+  message    String
+  results    Json? // Detailed results from individual nodes
+  createdAt  DateTime @default(now())
+}
+

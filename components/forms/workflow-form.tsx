@@ -1,7 +1,7 @@
 import { WorkflowFormSchema } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -43,11 +43,21 @@ const Workflowform = ({ subTitle, title }: Props) => {
   });
 
   // Use isSubmitting to track async form submission and lock button
+  const isLoading = form.formState.isLoading;
   const isSubmitting = form.formState.isSubmitting;
   const router = useRouter();
 
   const handleSubmit = async (values: z.infer<typeof WorkflowFormSchema>) => {
-    const workflow = await onCreateWorkflow(values.name, values.description);
+    // Fallback: If values are empty/partial but RHF state has them, use getValues()
+    // This handles edge cases where RHF's handleSubmit argument is unexpectedly empty
+    const formData = values.name ? values : form.getValues();
+
+    console.log("Submitting with:", formData);
+
+    const workflow = await onCreateWorkflow(
+      formData.name,
+      formData.description,
+    );
     if (workflow) {
       toast.message(workflow.message);
       router.refresh();
@@ -97,13 +107,13 @@ const Workflowform = ({ subTitle, title }: Props) => {
                 </FormItem>
               )}
             />
-            <Button className="mt-4" disabled={isSubmitting} type="submit">
-              {isSubmitting ? (
+            <Button className="mt-4" disabled={isLoading} type="submit">
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
                 </>
               ) : (
-                "Save Settings"
+                "Create Workflow"
               )}
             </Button>
           </form>

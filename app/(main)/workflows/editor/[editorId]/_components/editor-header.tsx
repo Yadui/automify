@@ -29,6 +29,8 @@ import {
   Workflow,
   Play,
   Loader2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
@@ -81,7 +83,7 @@ const EditorHeader = () => {
       workflowId,
       JSON.stringify(state.editor.elements),
       JSON.stringify(state.editor.edges),
-      JSON.stringify(isFlow)
+      JSON.stringify(isFlow),
     );
     if (response) {
       if (response.message) toast.success(response.message);
@@ -185,7 +187,7 @@ const EditorHeader = () => {
           const nodeMetadata = node.data?.metadata || {};
           const initialResult = await testGoogleDriveStep(
             nodeEvent,
-            nodeMetadata
+            nodeMetadata,
           );
           const knownFileIds = initialResult.currentFileIds || [];
 
@@ -200,7 +202,7 @@ const EditorHeader = () => {
             const result = await testGoogleDriveStep(
               nodeEvent,
               configWithKnownIds,
-              new Date().toISOString()
+              new Date().toISOString(),
             );
 
             if (result.success && result.data) {
@@ -209,7 +211,7 @@ const EditorHeader = () => {
               toast.success(
                 `${nodeName}: New ${
                   nodeEvent === "new_file" ? "file" : "folder"
-                } detected!`
+                } detected!`,
               );
             } else if (result.error) {
               executionError = result.error;
@@ -248,11 +250,11 @@ const EditorHeader = () => {
           const to = parseVariables(metadata.to || "", currentElements);
           const subject = parseVariables(
             metadata.subject || "",
-            currentElements
+            currentElements,
           );
           const message = parseVariables(
             metadata.message || "",
-            currentElements
+            currentElements,
           );
           const cc = parseVariables(metadata.cc || "", currentElements);
           const bcc = parseVariables(metadata.bcc || "", currentElements);
@@ -316,7 +318,7 @@ const EditorHeader = () => {
           const res = await onCreateNewPageInDatabase(
             databaseId,
             accessToken,
-            parsedContent
+            parsedContent,
           );
 
           if (res && res.id) {
@@ -348,7 +350,7 @@ const EditorHeader = () => {
           const res = await postMessageToSlack(
             slackConn.accessToken,
             channels,
-            parsedMessage
+            parsedMessage,
           );
 
           if (res.message === "Success") {
@@ -407,7 +409,7 @@ const EditorHeader = () => {
           payload: { nodeId, status: "error" },
         });
         toast.error(
-          `${nodeName} failed: ${executionError || "Node not fully configured"}`
+          `${nodeName} failed: ${executionError || "Node not fully configured"}`,
         );
         break;
       }
@@ -454,12 +456,32 @@ const EditorHeader = () => {
     (node: any) =>
       node.type === "Trigger" ||
       node.data.type === "Trigger" ||
-      node.data.type === "Google Drive"
+      node.data.type === "Google Drive",
   );
   const hasNodes = state.editor.elements.length > 0;
   const hasConnections = state.editor.edges.length > 0;
   const canPublish =
     hasTrigger && hasConnections && state.editor.lastRunSuccess;
+
+  // Undo/Redo availability
+  const canUndo = state.history.currentIndex > 0;
+  const canRedo = state.history.currentIndex < state.history.history.length - 1;
+
+  // Keyboard shortcut: Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const cmdKey = isMac ? e.metaKey : e.ctrlKey;
+      if (cmdKey && e.key === "s") {
+        e.preventDefault();
+        if (hasNodes && !isSaving) {
+          onFlowAutomation();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [hasNodes, isSaving, onFlowAutomation]);
 
   return (
     <header className="h-14 border-b border-muted/50 bg-background/95 backdrop-blur-sm flex items-center justify-between px-4 shrink-0">
@@ -476,14 +498,36 @@ const EditorHeader = () => {
         </div>
       </div>
 
-      {/* Right: Save, Run and Publish buttons */}
+      {/* Right: Undo/Redo, Save, Run and Publish buttons */}
       <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => dispatch({ type: "UNDO" })}
+          disabled={!canUndo}
+          className="h-8 w-8 p-0"
+          title="Undo (⌘Z)"
+        >
+          <Undo2 className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => dispatch({ type: "REDO" })}
+          disabled={!canRedo}
+          className="h-8 w-8 p-0"
+          title="Redo (⌘⇧Z)"
+        >
+          <Redo2 className="h-4 w-4" />
+        </Button>
+        <div className="w-px h-5 bg-border mx-1" />
         <Button
           size="sm"
           variant="outline"
           onClick={onFlowAutomation}
           disabled={!hasNodes || isSaving}
           className="h-8"
+          title="Save (⌘S)"
         >
           <Save className="h-3.5 w-3.5 mr-1.5" />
           {isSaving ? "Saving..." : "Save"}
@@ -510,7 +554,7 @@ const EditorHeader = () => {
             "h-8 transition-colors",
             isPublished
               ? "bg-amber-500 hover:bg-amber-600 text-white"
-              : "bg-primary hover:bg-primary/90"
+              : "bg-primary hover:bg-primary/90",
           )}
           title={
             !state.editor.lastRunSuccess

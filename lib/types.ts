@@ -139,6 +139,12 @@ export type EditorActions =
     }
   | { type: "CLEAR_RUN_STATUS" }
   | {
+      type: "DELETE_NODE";
+      payload: {
+        nodeId: string;
+      };
+    }
+  | {
       type: "SET_LAST_RUN_SUCCESS";
       payload: {
         success: boolean;

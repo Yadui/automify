@@ -3,7 +3,7 @@ import PageHeader from "@/components/page-header";
 
 export default function Loading() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       <PageHeader
         title="Connections"
         description="Manage your app connections"

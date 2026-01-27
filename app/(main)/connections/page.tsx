@@ -115,7 +115,7 @@ const Connections = async (props: ConnectionProps) => {
   const connections = await onUserConnections();
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-[90vh] w-[92vw]">
       <PageHeader
         title="Connections"
         description="Connect all your apps directly from here. You may need to reconnect to refresh verification."

@@ -15,14 +15,17 @@ import { toast } from "sonner";
 import {
   onFlowPublish,
   onDeleteWorkflow,
+  onCreateWorkflowLog,
 } from "../_actions/workflow-connections";
 import { useRouter } from "next/navigation";
 
-import { Play, Loader2, Trash2 } from "lucide-react";
+import { Play, Loader2, Trash2, Copy } from "lucide-react";
 import EditorCanvasIconHelper from "../editor/[editorId]/_components/editor-canvas-card-icon-hepler";
 import { parseVariables } from "@/lib/utils";
 import { testGoogleDriveStep } from "@/app/(main)/connections/_actions/google-connection";
 import { sendGmail } from "@/app/(main)/connections/_actions/google-gmail-action";
+import { onDuplicateWorkflow } from "../_actions/workflow-connections";
+import WorkflowLogs from "./workflow-logs";
 
 type Props = {
   name: string;
@@ -38,6 +41,7 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
   const [isRunning, setIsRunning] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   // Parse nodes if they are string (sometimes Prisma JSON can be stringified)
   const parsedNodes = typeof nodes === "string" ? JSON.parse(nodes) : nodes;
@@ -45,7 +49,7 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
 
   // Extract unique node types for the preview
   const usedNodeTypes = Array.from(
-    new Set((parsedNodes || []).map((n: any) => n.data?.type))
+    new Set((parsedNodes || []).map((n: any) => n.data?.type)),
   ).filter(Boolean) as any[];
 
   const onDelete = async (e: React.MouseEvent) => {
@@ -74,6 +78,26 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
     }
   };
 
+  const onDuplicate = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setIsDuplicating(true);
+    try {
+      const result = await onDuplicateWorkflow(id);
+      if (result.success) {
+        toast.success("Workflow duplicated");
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error("Failed to duplicate workflow");
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   const onRun = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -82,6 +106,8 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
     setIsRunning(true);
     toast.info(`Starting workflow: ${name}`);
 
+    const nodeResults: Record<string, any> = {};
+
     try {
       if (!parsedNodes || parsedNodes.length === 0) {
         throw new Error("Workflow has no nodes");
@@ -89,7 +115,7 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
 
       // Simple execution order (Trigger nodes first)
       const triggerNodes = parsedNodes.filter(
-        (n: any) => n.type === "Trigger" || n.data?.type === "Google Drive"
+        (n: any) => n.type === "Trigger" || n.data?.type === "Google Drive",
       );
       const executionOrder = [...triggerNodes.map((n: any) => n.id)];
 
@@ -127,14 +153,14 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
           toast.info(`Checking ${nodeName}...`);
           const result = await testGoogleDriveStep(
             node.data?.metadata?.event,
-            node.data?.metadata
+            node.data?.metadata,
           );
           if (result.error) throw new Error(`${nodeName}: ${result.error}`);
           nodeResultData = result.data || { status: "checked" };
         } else if (nodeType === "Toast Message") {
           const msg = parseVariables(
             node.data?.metadata?.message,
-            currentElements
+            currentElements,
           );
           toast(msg);
           nodeResultData = { message: msg };
@@ -142,11 +168,11 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
           const to = parseVariables(node.data?.metadata?.to, currentElements);
           const subject = parseVariables(
             node.data?.metadata?.subject,
-            currentElements
+            currentElements,
           );
           const message = parseVariables(
             node.data?.metadata?.message,
-            currentElements
+            currentElements,
           );
 
           if (!to) throw new Error("Recipient missing in Email node");
@@ -158,6 +184,8 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
           nodeResultData = { status: "executed" };
         }
 
+        nodeResults[nodeId] = nodeResultData;
+
         // Update current elements for variable resolution
         currentElements = currentElements.map((el) =>
           el.id === nodeId
@@ -168,19 +196,26 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
                   metadata: { ...el.data.metadata, sampleData: nodeResultData },
                 },
               }
-            : el
+            : el,
         );
       }
       toast.success(`Workflow "${name}" executed successfully!`);
+      await onCreateWorkflowLog(
+        id,
+        "Success",
+        "Manual execution completed successfully",
+        nodeResults,
+      );
     } catch (err: any) {
       toast.error(`Workflow failed: ${err.message}`);
+      await onCreateWorkflowLog(id, "Failure", err.message, nodeResults);
     } finally {
       setIsRunning(false);
     }
   };
 
   return (
-    <Card className="flex w-full items-center justify-between gap-4 p-5 hover:bg-muted/30 transition-all border-none shadow-none bg-transparent">
+    <Card className="flex w-full items-center justify-between gap-4 p-5 hover:bg-accent transition-all border border-border bg-card shadow-sm rounded-xl">
       <Link href={`/workflows/editor/${id}`} className="flex-1">
         <CardHeader className="p-0 flex flex-col gap-4">
           <div className="flex flex-row items-center -space-x-3">
@@ -214,6 +249,19 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
       </Link>
 
       <div className="flex items-center gap-3">
+        <WorkflowLogs workflowId={id} />
+        <Button
+          onClick={onDuplicate}
+          disabled={isDuplicating}
+          size="sm"
+          className="rounded-full bg-neutral-200 text-neutral-900 hover:bg-neutral-300 transition-all shadow-sm border-none h-10 w-10 flex items-center justify-center p-0"
+        >
+          {isDuplicating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </Button>
         <Button
           onClick={onDelete}
           onMouseLeave={() => setDeleteConfirm(false)}
@@ -223,7 +271,7 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
             "group rounded-full font-bold transition-all duration-2000 ease-in-out shadow-sm border-none h-10 overflow-hidden w-10 hover:w-auto hover:px-4",
             deleteConfirm
               ? "bg-red-500 text-white hover:bg-red-600"
-              : "bg-red-300 text-red-900 hover:bg-red-400"
+              : "bg-red-300 text-red-900 hover:bg-red-400",
           )}
         >
           <div className="flex items-center justify-center whitespace-nowrap">
@@ -247,7 +295,7 @@ const Workflow = ({ description, id, name, publish, nodes, edges }: Props) => {
             "rounded-full px-8 font-bold transition-all shadow-sm border-none h-10",
             isRunning
               ? "bg-muted text-muted-foreground"
-              : "bg-white text-black hover:bg-neutral-100"
+              : "bg-primary text-primary-foreground hover:bg-primary/90",
           )}
         >
           {isRunning ? (

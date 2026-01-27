@@ -26,6 +26,7 @@ const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
   const [data, setData] = useState<ModalData>({});
   const [showingModal, setShowingModal] = useState<React.ReactNode>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [modalKey, setModalKey] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -33,12 +34,14 @@ const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
 
   const setOpen = async (
     modal: React.ReactNode,
-    fetchData?: () => Promise<any>
+    fetchData?: () => Promise<any>,
   ) => {
     if (modal) {
       if (fetchData) {
         setData({ ...data, ...(await fetchData()) } || {});
       }
+      // Increment key to force remount of modal content
+      setModalKey((prev) => prev + 1);
       setShowingModal(modal);
       setIsOpen(true);
     }
@@ -54,7 +57,8 @@ const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
   return (
     <ModalContext.Provider value={{ data, setOpen, setClose, isOpen }}>
       {children}
-      {showingModal}
+      {/* Key forces React to remount the entire modal tree, giving forms fresh hook state */}
+      <div key={modalKey}>{showingModal}</div>
     </ModalContext.Provider>
   );
 };

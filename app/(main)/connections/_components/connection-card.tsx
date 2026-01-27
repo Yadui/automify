@@ -76,7 +76,7 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
       <div className="flex flex-col items-center gap-2 p-4">
         {connected[type] ? (
           <>
-            <div className="border-bg-primary rounded-lg border-2 px-3 py-2 font-bold text-white flex flex-col items-center">
+            <div className="border-primary rounded-lg border-2 px-3 py-2 font-bold text-primary flex flex-col items-center">
               <span>Connected</span>
               {connectedId && (
                 <span className="text-[10px] font-normal text-muted-foreground mt-1">

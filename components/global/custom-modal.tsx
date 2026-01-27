@@ -28,13 +28,15 @@ const CustomModal = ({ children, subheading, title, defaultOpen }: Props) => {
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle className="text-center">{title}</DrawerTitle>
-          <DrawerDescription className="text-center flex flex-col items-center gap-4 h-96 overflow-scroll">
+          <DrawerDescription className="text-center">
             {subheading}
-            {children}
           </DrawerDescription>
         </DrawerHeader>
+        <div className="flex flex-col items-center gap-4 px-4 pb-4 max-h-96 overflow-auto">
+          {children}
+        </div>
         <DrawerFooter className="flex flex-col gap-4 bg-background border-t-[1px] border-t-muted">
-          <DrawerClose>
+          <DrawerClose asChild>
             <Button variant="ghost" className="w-full" onClick={handleClose}>
               Close
             </Button>

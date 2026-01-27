@@ -41,7 +41,9 @@ const Settings = async () => {
 
       await db.user.update({
         where: { id: userId },
-        data: { profileImage: dataUrl },
+        data: {
+          profileImage: dataUrl,
+        },
       });
 
       return { success: true };
@@ -65,6 +67,19 @@ const Settings = async () => {
     return updatedUser;
   };
 
+  const updateProfileImage = async (image: string) => {
+    "use server";
+    const response = await db.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        profileImage: image,
+      },
+    });
+    return response;
+  };
+
   // Profile content to pass to tabs
   const profileContent = (
     <section className="space-y-6">
@@ -78,13 +93,14 @@ const Settings = async () => {
         onDelete={removeProfileImage}
         userImage={user?.profileImage || ""}
         onUpload={uploadProfileImage}
+        onUpdateImage={updateProfileImage}
       />
       <ProfileForm user={user} onUpdate={updateUserInfo} />
     </section>
   );
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-[90vh] w-[92vw]">
       <PageHeader
         title="Settings"
         description="Manage your account settings and preferences"

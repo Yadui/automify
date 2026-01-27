@@ -42,7 +42,7 @@ const EditorCanvas = () => {
   const { dispatch, state } = useEditor();
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
-  const [isWorkFlowLoading, setIsWorkFlowLoading] = useState<boolean>(false);
+  // Removed local loading state as data is now injected via EditorProvider
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const pathname = usePathname();
@@ -57,7 +57,7 @@ const EditorCanvas = () => {
       // Apply changes to global state
       const updatedNodes = applyNodeChanges(
         changes,
-        state.editor.elements as any
+        state.editor.elements as any,
       ) as EditorNodeType[];
       dispatch({
         type: "LOAD_DATA",
@@ -66,18 +66,18 @@ const EditorCanvas = () => {
       // Also update local state for sync
       setNodes(updatedNodes);
     },
-    [state.editor.elements, state.editor.edges, dispatch]
+    [state.editor.elements, state.editor.edges, dispatch],
   );
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) =>
       setEdges((eds) => applyEdgeChanges(changes, eds)),
-    [setEdges]
+    [setEdges],
   );
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
-    []
+    [],
   );
 
   const onDrop = useCallback(
@@ -85,11 +85,11 @@ const EditorCanvas = () => {
       event.preventDefault();
 
       const type = event.dataTransfer.getData(
-        "application/reactflow"
+        "application/reactflow",
       ) as EditorCanvasCardType["type"];
 
       const triggerAlreadyExists = state.editor.elements.find(
-        (node) => node.type === "Trigger"
+        (node) => node.type === "Trigger",
       );
 
       if (type === "Trigger" && triggerAlreadyExists) {
@@ -122,7 +122,7 @@ const EditorCanvas = () => {
       //@ts-ignore
       setNodes((nds) => nds.concat(newNode)); // setNodes((nds) => [...nds, newNode])
     },
-    [reactFlowInstance, state]
+    [reactFlowInstance, state],
   );
 
   const handleClickCanvas = () => {
@@ -146,18 +146,23 @@ const EditorCanvas = () => {
     });
   };
 
-  // Sync local nodes with global state when elements change (e.g., from modal)
+  // Sync local nodes with global state when elements change (e.g., from modal OR deletion)
   useEffect(() => {
-    // Only sync if global state has more nodes than local (node was added externally)
-    if (state.editor.elements.length > nodes.length) {
-      setNodes(state.editor.elements as EditorNodeType[]);
-    }
-  }, [state.editor.elements.length]);
+    // We check if the lengths differ or content might have changed.
+    // Simplifying: Always sync if state.editor.elements changes.
+    // To avoid unnecessary re-renders/loops, we can rely on React's state setter optimization or add a JSON stringify check if needed.
+    // Given the bug was specifically about deletion (length decreases), we simple remove the '> nodes.length' check.
+    setNodes(state.editor.elements as EditorNodeType[]);
+  }, [state.editor.elements]);
 
   // Sync global edges to local state (for modal edge updates)
   useEffect(() => {
     // Check if global edges differ from local (edge was split by modal)
-    if (state.editor.edges.length !== edges.length) {
+    // Also sync on initial load
+    if (
+      state.editor.edges.length !== edges.length ||
+      (state.editor.edges.length > 0 && edges.length === 0)
+    ) {
       setEdges(state.editor.edges);
     }
   }, [state.editor.edges]);
@@ -165,9 +170,22 @@ const EditorCanvas = () => {
   // Sync local edges to global state
   useEffect(() => {
     if (edges.length > 0 || state.editor.edges.length === 0) {
-      dispatch({ type: "LOAD_DATA", payload: { edges, elements: nodes } });
+      // Avoid dispatching if local state matches global state (prevent loops)
+      if (edges.length !== state.editor.edges.length && edges.length > 0) {
+        dispatch({ type: "LOAD_DATA", payload: { edges, elements: nodes } });
+      }
     }
   }, [edges]);
+
+  // Initial Data Sync: If state has elements but local nodes/edges are empty (on first render), set them.
+  useEffect(() => {
+    if (state.editor.elements.length > 0 && nodes.length === 0) {
+      setNodes(state.editor.elements as EditorNodeType[]);
+    }
+    if (state.editor.edges.length > 0 && edges.length === 0) {
+      setEdges(state.editor.edges);
+    }
+  }, [state.editor.elements, state.editor.edges]);
 
   const nodeTypes = useMemo(
     () => ({
@@ -190,152 +208,158 @@ const EditorCanvas = () => {
       "Key-Value Storage": EditorCanvasCardSingle,
       "Toast Message": EditorCanvasCardSingle,
     }),
-    []
+    [],
   );
 
   const edgeTypes = useMemo(
     () => ({
       "plus-edge": PlusEdge,
     }),
-    []
+    [],
   );
 
-  const onGetWorkFlow = async () => {
-    setIsWorkFlowLoading(true);
-    const response = await onGetNodesEdges(pathname.split("/").pop()!);
-    if (response) {
-      setEdges(JSON.parse(response.edges as string));
-      setNodes(JSON.parse(response.nodes as string));
-      setIsWorkFlowLoading(false);
-    }
-    setIsWorkFlowLoading(false);
-  };
-
+  // Keyboard shortcuts: Undo (Cmd+Z), Redo (Cmd+Shift+Z), Delete
   useEffect(() => {
-    onGetWorkFlow();
-  }, []);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const cmdKey = isMac ? e.metaKey : e.ctrlKey;
+
+      // Undo: Cmd+Z (without Shift)
+      if (cmdKey && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        dispatch({ type: "UNDO" });
+        return;
+      }
+
+      // Redo: Cmd+Shift+Z or Cmd+Y
+      if (cmdKey && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        e.preventDefault();
+        dispatch({ type: "REDO" });
+        return;
+      }
+
+      // Delete selected node: Delete or Backspace
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const selectedNodeId = state.editor.selectedNode?.id;
+        if (selectedNodeId && selectedNodeId !== "") {
+          e.preventDefault();
+          dispatch({
+            type: "DELETE_NODE",
+            payload: { nodeId: selectedNodeId },
+          });
+          toast.success("Node deleted");
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [dispatch, state.editor.selectedNode?.id]);
 
   return (
     <ResizablePanelGroup direction="horizontal" className="flex-1">
       <ResizablePanel defaultSize={70}>
         <div className="flex h-full items-center justify-center">
           <div style={{ width: "100%", height: "100%" }} className="relative">
-            {isWorkFlowLoading ? (
-              <div className="absolute flex h-full w-full items-center justify-center">
-                <svg
-                  aria-hidden="true"
-                  className="inline h-8 w-8 animate-spin fill-blue-600 text-gray-200 dark:text-gray-600"
-                  viewBox="0 0 100 101"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                    fill="currentFill"
-                  />
-                </svg>
-              </div>
-            ) : (
-              <>
-                <ReactFlow
-                  className="w-full h-full"
-                  onDrop={onDrop}
-                  onDragOver={onDragOver}
-                  nodes={state.editor.elements}
-                  onNodesChange={onNodesChange}
-                  edges={edges}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onInit={setReactFlowInstance}
-                  fitView
-                  onPaneClick={handleClickCanvas}
-                  nodeTypes={nodeTypes}
-                  edgeTypes={edgeTypes}
-                  defaultEdgeOptions={{ type: "plus-edge" }}
-                >
-                  <Controls position="top-left" />
-                  <MiniMap
-                    position="bottom-left"
-                    className="!bg-background"
-                    zoomable
-                    pannable
-                  />
-                  <Background
-                    //@ts-ignore
-                    variant="dots"
-                    gap={12}
-                    size={1}
-                  />
-                </ReactFlow>
+            <ReactFlow
+              className="w-full h-full"
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              nodes={state.editor.elements}
+              onNodesChange={onNodesChange}
+              edges={edges}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onInit={setReactFlowInstance}
+              fitView
+              onPaneClick={handleClickCanvas}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              defaultEdgeOptions={{ type: "plus-edge" }}
+            >
+              <Controls position="top-left" />
+              <MiniMap
+                position="bottom-left"
+                className="!bg-background"
+                zoomable
+                pannable
+              />
+              <Background
+                //@ts-ignore
+                variant="dots"
+                gap={12}
+                size={1}
+              />
+            </ReactFlow>
 
-                {/* Top-right Add Node button - hidden when sidebar is open */}
-                {!state.editor.isSidebarOpen &&
-                  state.editor.elements.length > 0 && (
-                    <div className="absolute top-4 right-4 z-10">
-                      <Button
-                        onClick={() => {
-                          // Get the last node's position to place the new one below it
-                          const lastNode =
-                            state.editor.elements[
-                              state.editor.elements.length - 1
-                            ];
-                          const newY = lastNode
-                            ? lastNode.position.y + 200
-                            : 200;
-                          const newX = lastNode ? lastNode.position.x : 250;
-                          dispatch({
-                            type: "OPEN_ADD_MODAL",
-                            payload: {
-                              position: { x: newX, y: newY },
-                              sourceNodeId: lastNode?.id,
-                            },
-                          });
-                        }}
-                        className="gap-2 shadow-lg"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Node
-                      </Button>
-                    </div>
-                  )}
+            {/* Top-right Add Node button - hidden when sidebar is open */}
+            {!state.editor.isSidebarOpen &&
+              state.editor.elements.length > 0 && (
+                <div className="absolute top-4 right-4 z-10">
+                  <Button
+                    onClick={() => {
+                      // Get the last node's position to place the new one below it
+                      const lastNode =
+                        state.editor.elements[state.editor.elements.length - 1];
+                      const newY = lastNode ? lastNode.position.y + 200 : 200;
+                      const newX = lastNode ? lastNode.position.x : 250;
+                      dispatch({
+                        type: "OPEN_ADD_MODAL",
+                        payload: {
+                          position: { x: newX, y: newY },
+                          sourceNodeId: lastNode?.id,
+                        },
+                      });
+                    }}
+                    className="gap-2 shadow-lg"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Node
+                  </Button>
+                </div>
+              )}
 
-                {state.editor.elements.length === 0 &&
-                  !state.editor.isAddModalOpen && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[40]">
-                      <div className="bg-background/80 backdrop-blur-sm p-12 rounded-3xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center gap-6 text-center pointer-events-auto shadow-2xl animate-in zoom-in-95 relative z-[41]">
-                        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary animate-pulse">
-                          <Plus size={40} />
-                        </div>
-                        <div className="space-y-2">
-                          <h3 className="text-3xl font-bold">
-                            Start your automation
-                          </h3>
-                          <p className="text-muted-foreground max-w-[300px]">
-                            Click the button below to add your first trigger and
-                            begin building your flow.
-                          </p>
-                        </div>
-                        <Button
-                          size="lg"
-                          onClick={() => {
-                            dispatch({
-                              type: "OPEN_ADD_MODAL",
-                              payload: { position: { x: 250, y: 200 } },
-                            });
-                          }}
-                          className="rounded-full px-8 h-14 text-lg font-bold shadow-xl hover:shadow-primary/20 transition-all font-mono"
-                        >
-                          ADD TRIGGER
-                        </Button>
-                      </div>
+            {state.editor.elements.length === 0 &&
+              !state.editor.isAddModalOpen && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[40]">
+                  <div className="bg-background/80 backdrop-blur-sm p-12 rounded-3xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center gap-6 text-center pointer-events-auto shadow-2xl animate-in zoom-in-95 relative z-[41]">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary animate-pulse">
+                      <Plus size={40} />
                     </div>
-                  )}
-              </>
-            )}
+                    <div className="space-y-2">
+                      <h3 className="text-3xl font-bold">
+                        Start your automation
+                      </h3>
+                      <p className="text-muted-foreground max-w-[300px]">
+                        Click the button below to add your first trigger and
+                        begin building your flow.
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      onClick={() => {
+                        dispatch({
+                          type: "OPEN_ADD_MODAL",
+                          payload: { position: { x: 250, y: 200 } },
+                        });
+                      }}
+                      className="rounded-full px-8 h-14 text-lg font-bold shadow-xl hover:shadow-primary/20 transition-all font-mono"
+                    >
+                      ADD TRIGGER
+                    </Button>
+                  </div>
+                </div>
+              )}
             <AddStepModal />
           </div>
         </div>
@@ -343,15 +367,9 @@ const EditorCanvas = () => {
       <ResizableHandle />
       {state.editor.isSidebarOpen && (
         <ResizablePanel defaultSize={30} className="relative sm:block">
-          {isWorkFlowLoading ? (
-            <div className="absolute flex h-full w-full items-center justify-center">
-              {/* Skip spinner SVG for brevity */}
-            </div>
-          ) : (
-            <FlowInstance edges={edges} nodes={nodes}>
-              <EditorCanvasSidebar />
-            </FlowInstance>
-          )}
+          <FlowInstance edges={edges} nodes={nodes}>
+            <EditorCanvasSidebar />
+          </FlowInstance>
         </ResizablePanel>
       )}
     </ResizablePanelGroup>

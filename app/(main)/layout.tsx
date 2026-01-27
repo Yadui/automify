@@ -1,6 +1,7 @@
 "use client";
 import InfoBar from "@/components/infobar";
 import Sidebar from "@/components/sidebar";
+import SupportChatbot from "@/components/global/support-chatbot"; // Import Chatbot
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { getUserInfo } from "./_actions/user-info";
@@ -37,7 +38,6 @@ const Layout = (props: Props) => {
       {/* Full-width InfoBar at the top */}
       {!isEditor && <InfoBar />}
 
-      {/* Sidebar + Content below the InfoBar */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar user={user || undefined} />
         <main
@@ -49,6 +49,7 @@ const Layout = (props: Props) => {
         >
           {props.children}
         </main>
+        <SupportChatbot />
       </div>
     </div>
   );

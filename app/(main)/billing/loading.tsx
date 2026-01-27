@@ -3,7 +3,7 @@ import PageHeader from "@/components/page-header";
 
 export default function Loading() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       <PageHeader title="Billing" description="Manage your subscription" />
       <div className="p-6 space-y-8">
         {/* Current Plan Skeleton */}
