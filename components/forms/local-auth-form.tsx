@@ -44,28 +44,28 @@ export const LocalAuthForm = () => {
   };
 
   return (
-    <div className="flex flex-col gap-10 w-full animate-in fade-in duration-700">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-black tracking-tight text-white leading-none uppercase">
-          {isLogin ? "Fallback Login" : "Create Account"}
+    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-700">
+      <div className="flex flex-col gap-2 text-center">
+        <h2 className="text-xl font-bold tracking-tight">
+          {isLogin ? "Welcome back" : "Create an account"}
         </h2>
-        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em] leading-relaxed">
+        <p className="text-sm text-muted-foreground font-medium">
           {isLogin
-            ? "Authorized Personnel Only"
-            : "Initialize local database record"}
+            ? "Enter your credentials to access your account"
+            : "Enter your information to get started"}
         </p>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Link href="/api/auth/google/start" className="w-full">
           <Button
             type="button"
             variant="outline"
-            className="w-full bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05] hover:border-white/[0.1] h-14 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-3 text-neutral-400 hover:text-white uppercase tracking-widest group"
+            className="w-full h-10 font-semibold gap-2"
             disabled={loading}
           >
             <svg
-              className="w-4 h-4 grayscale opacity-50 group-hover:opacity-100 group-hover:grayscale-0 transition-all"
+              className="w-4 h-4"
               viewBox="0 0 24 24"
               width="24"
               height="24"
@@ -90,67 +90,58 @@ export const LocalAuthForm = () => {
                 />
               </g>
             </svg>
-            Continue with Google
+            Google
           </Button>
         </Link>
         <Link href="/api/auth/github/start" className="w-full">
           <Button
             type="button"
             variant="outline"
-            className="w-full bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05] hover:border-white/[0.1] h-14 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-3 text-neutral-400 hover:text-white uppercase tracking-widest group"
+            className="w-full h-10 font-semibold gap-2"
             disabled={loading}
           >
-            <Github className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
-            Continue with GitHub
+            <Github className="w-4 h-4" />
+            GitHub
           </Button>
         </Link>
-
-        <div className="relative flex items-center gap-4 my-2">
-          <div className="h-[1px] w-full bg-white/5" />
-          <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.3em] whitespace-nowrap">
-            OR USE PROTOCOL
-          </span>
-          <div className="h-[1px] w-full bg-white/5" />
-        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div className="relative flex items-center gap-4">
+        <div className="h-[1px] w-full bg-border" />
+        <span className="text-[10px] uppercase font-bold text-muted-foreground whitespace-nowrap">
+          Or continue with
+        </span>
+        <div className="h-[1px] w-full bg-border" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {!isLogin && (
-          <div className="space-y-2">
-            <label className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.2em] ml-1">
-              Identifier
-            </label>
+          <div className="space-y-1">
             <Input
-              placeholder="YOUR NAME"
-              className="bg-neutral-900/30 border-neutral-800/80 focus:border-[#E2CBFF]/30 transition-all h-13 rounded-2xl text-xs font-bold tracking-wider placeholder:text-neutral-700 uppercase"
+              placeholder="Name"
+              className="h-10"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
             />
           </div>
         )}
-        <div className="space-y-2">
-          <label className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.2em] ml-1">
-            Credentials / Email
-          </label>
+        <div className="space-y-1">
           <Input
             type="email"
-            placeholder="ACCESS@DOMAIN.COM"
-            className="bg-neutral-900/30 border-neutral-800/80 focus:border-[#E2CBFF]/30 transition-all h-13 rounded-2xl text-xs font-bold tracking-wider placeholder:text-neutral-700 uppercase"
+            placeholder="Email"
+            className="h-10"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
           />
         </div>
-        <div className="space-y-2">
-          <label className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.2em] ml-1">
-            Access Protocol / Password
-          </label>
+        <div className="space-y-1">
           <Input
             type="password"
-            placeholder="••••••••"
-            className="bg-neutral-900/30 border-neutral-800/80 focus:border-[#E2CBFF]/30 transition-all h-13 rounded-2xl text-xs font-bold tracking-wider placeholder:text-neutral-700"
+            placeholder="Password"
+            className="h-10"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -159,25 +150,21 @@ export const LocalAuthForm = () => {
         </div>
         <Button
           type="submit"
-          className="bg-[#E2CBFF] text-black hover:bg-white h-14 rounded-2xl font-black text-xs shadow-lg shadow-[#E2CBFF]/5 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2 uppercase tracking-widest"
+          className="w-full h-10 font-semibold"
           disabled={loading}
         >
-          {loading
-            ? "PROCESSING..."
-            : isLogin
-              ? "EXECUTE LOGIN"
-              : "INITIALIZE ACCOUNT"}
+          {loading ? "Processing..." : isLogin ? "Sign In" : "Create Account"}
         </Button>
       </form>
 
-      <div className="flex justify-center border-t border-neutral-800/50 pt-8 pb-2">
+      <div className="flex justify-center">
         <button
           onClick={() => setIsLogin(!isLogin)}
-          className="text-[9px] font-black text-neutral-600 hover:text-white transition-all uppercase tracking-[0.2em]"
+          className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
         >
           {isLogin
-            ? "Request new access credentials"
-            : "Return to login protocol"}
+            ? "Don't have an account? Sign up"
+            : "Already have an account? Sign in"}
         </button>
       </div>
     </div>

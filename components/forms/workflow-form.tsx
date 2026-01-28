@@ -4,13 +4,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+
 import {
   Form,
   FormControl,
@@ -29,9 +23,10 @@ import { useModal } from "@/providers/modal-provider";
 type Props = {
   title?: string;
   subTitle?: string;
+  onClose?: () => void;
 };
 
-const Workflowform = ({ subTitle, title }: Props) => {
+const Workflowform = ({ subTitle, title, onClose }: Props) => {
   const { setClose } = useModal();
   const form = useForm<z.infer<typeof WorkflowFormSchema>>({
     mode: "onChange",
@@ -56,70 +51,81 @@ const Workflowform = ({ subTitle, title }: Props) => {
 
     const workflow = await onCreateWorkflow(
       formData.name,
-      formData.description,
+      formData.description || "",
     );
     if (workflow) {
       toast.message(workflow.message);
-      router.refresh();
+      if (workflow.id) {
+        router.push(`/workflows/editor/${workflow.id}`);
+      } else {
+        router.refresh();
+      }
     }
-    setClose();
+    if (onClose) {
+      onClose();
+    } else {
+      setClose();
+    }
   };
 
   return (
-    <Card className="w-full max-w-[650px] border-none">
-      {title && subTitle && (
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{subTitle}</CardDescription>
-        </CardHeader>
-      )}
-      <CardContent>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="flex flex-col gap-4 text-left"
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="flex flex-col gap-4 text-left"
+      >
+        <FormField
+          disabled={isSubmitting}
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Name <span className="text-red-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Workflow Name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          disabled={isSubmitting}
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Input placeholder="Description (Optional)" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex items-center gap-2 mt-2">
+          <Button className="w-full" disabled={isLoading} type="submit">
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+              </>
+            ) : (
+              "Create Workflow"
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={onClose}
+            disabled={isLoading}
           >
-            <FormField
-              disabled={isSubmitting}
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Name" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              disabled={isSubmitting}
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Description" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button className="mt-4" disabled={isLoading} type="submit">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
-                </>
-              ) : (
-                "Create Workflow"
-              )}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 };
 

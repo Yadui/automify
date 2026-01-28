@@ -16,6 +16,7 @@ import Link from "next/link";
 import { BackgroundLines } from "@/components/ui/background-lines";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/page-header";
+import WorkflowButton from "../workflows/_components/workflow-button";
 
 const DashboardPage = async () => {
   const { user } = await validateRequest();
@@ -78,12 +79,13 @@ const DashboardPage = async () => {
         title="Dashboard"
         description="Overview of your automation platform"
       >
-        <Link href="/workflows">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2">
-            <Plus className="w-4 h-4" />
-            Create Workflow
-          </Button>
-        </Link>
+        <WorkflowButton
+          size="default"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Create Workflow
+        </WorkflowButton>
       </PageHeader>
 
       <div className="relative flex-1 overflow-visible">

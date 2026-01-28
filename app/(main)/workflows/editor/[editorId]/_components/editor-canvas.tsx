@@ -14,6 +14,10 @@ import ReactFlow, {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  reconnectEdge,
+  getIncomers,
+  getOutgoers,
+  getConnectedEdges, // Add getConnectedEdges
 } from "reactflow";
 import "reactflow/dist/style.css";
 import EditorCanvasCardSingle from "./editor-canvas-card-single";
@@ -40,12 +44,122 @@ const initialEdges: { id: string; source: string; target: string }[] = [];
 
 const EditorCanvas = () => {
   const { dispatch, state } = useEditor();
+  // Helper to find closest handle
+
+  // Actually, I'll inline the logic in onNodeDrag or create a proper helper outside the component or inside.
+  // Let's add the helper function and state for temp edge.
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   // Removed local loading state as data is now injected via EditorProvider
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const pathname = usePathname();
+
+  // Proximity Connect State
+  const MIN_DISTANCE = 150;
+
+  const getClosestHandle = useCallback(
+    (pos: { x: number; y: number }) => {
+      if (!reactFlowInstance) return null;
+      // We need to iterate over all nodes and their handles
+      // Since we don't have easy access to handle positions directly without internal state
+      // We will approximate using node centers or known handle positions if possible
+      // Alternatively, use reactFlowInstance.getNodes() and iterate
+
+      // For simplicity, let's assume handles are close to node centers or standard positions
+      // Detailed implementation requires internal handle bounds which `reactflow` 11 exposes via useStore or similar
+      // BUT the example given usually iterates all nodes
+
+      // Let's use getNodes() from instance
+      const nodes = reactFlowInstance.getNodes();
+      let closestHandle = null;
+      let minDistance = MIN_DISTANCE;
+
+      nodes.forEach((node) => {
+        // Skip current dragging node? handled in caller
+        // Calculate distance from pos to node center/handles
+        const dx = node.position.x - pos.x;
+        const dy = node.position.y - pos.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < minDistance) {
+          minDistance = d;
+          closestHandle = { nodeId: node.id, distance: d };
+        }
+      });
+      return closestHandle;
+    },
+    [reactFlowInstance],
+  );
+
+  const onNodeDrag = useCallback(
+    (_: any, node: EditorNodeType) => {
+      const closeHandle = getClosestHandle(node, nodes);
+
+      if (closeHandle) {
+        setEdges((eds) => {
+          const nextEdges = eds.filter((e) => e.className !== "temp");
+
+          if (
+            closeHandle.nodeId !== node.id &&
+            !nextEdges.find(
+              (e) =>
+                e.source === e.target ||
+                (e.source === node.id && e.target === closeHandle.nodeId) ||
+                (e.target === node.id && e.source === closeHandle.nodeId),
+            )
+          ) {
+            const tempEdge: Edge = {
+              id: "temp-edge",
+              source: closeHandle.nodeId,
+              target: node.id,
+              className: "temp",
+              animated: true,
+              style: { strokeDasharray: "5,5" },
+            };
+            return [...nextEdges, tempEdge];
+          }
+          return nextEdges;
+        });
+      }
+    },
+    [getClosestHandle, nodes, setEdges],
+  );
+
+  const onNodeDragStop = useCallback(
+    (_: any, node: EditorNodeType) => {
+      const closeHandle = getClosestHandle(node, nodes);
+
+      if (closeHandle && closeHandle.distance < MIN_DISTANCE) {
+        setEdges((eds) => {
+          const validEdges = eds.filter((e) => e.className !== "temp");
+
+          // Avoid self-loops and duplicates
+          if (
+            closeHandle.nodeId === node.id ||
+            validEdges.find(
+              (e) =>
+                (e.source === node.id && e.target === closeHandle.nodeId) ||
+                (e.target === node.id && e.source === closeHandle.nodeId),
+            )
+          ) {
+            return validEdges;
+          }
+
+          const newEdge: Edge = {
+            id: `${closeHandle.nodeId}-${node.id}`,
+            source: closeHandle.nodeId,
+            target: node.id,
+            type: "plus-edge",
+          };
+          return addEdge(newEdge, validEdges);
+        });
+      } else {
+        // Clean up temp edge if dropped far
+        setEdges((eds) => eds.filter((e) => e.className !== "temp"));
+      }
+    },
+    [getClosestHandle, nodes, setEdges],
+  );
 
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -145,6 +259,64 @@ const EditorCanvas = () => {
       },
     });
   };
+
+  const onReconnectStart = useCallback(() => {
+    // console.log("onReconnectStart");
+  }, []);
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      setEdges((els) => reconnectEdge(oldEdge, newConnection, els));
+    },
+    [setEdges],
+  );
+
+  const onReconnectEnd = useCallback(
+    (_: any, edge: Edge) => {
+      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+    },
+    [setEdges],
+  );
+
+  const onNodesDelete = useCallback(
+    (deleted: EditorNodeType[]) => {
+      setEdges((deletedEdges) => {
+        const remainingEdges = deletedEdges.reduce((acc, edge) => {
+          // If edge is connected to deleted node, don't include it
+          const isConnectedToDeleted = deleted.some(
+            (node) => node.id === edge.source || node.id === edge.target,
+          );
+          if (!isConnectedToDeleted) {
+            return [...acc, edge];
+          }
+          return acc;
+        }, [] as Edge[]);
+
+        const createdEdges = deleted.reduce((acc, node) => {
+          const incomers = getIncomers(node, nodes, deletedEdges);
+          const outgoers = getOutgoers(node, nodes, deletedEdges);
+          const connectedEdges = getConnectedEdges([node], deletedEdges);
+          const remaining = acc.filter(
+            (edge) => !connectedEdges.includes(edge),
+          );
+
+          const created = incomers.flatMap(({ id: source }) =>
+            outgoers.map(({ id: target }) => ({
+              id: `${source}->${target}`,
+              source,
+              target,
+              type: "plus-edge", // Maintain edge type consistency
+            })),
+          );
+
+          return [...remaining, ...created];
+        }, remainingEdges);
+
+        return createdEdges;
+      });
+    },
+    [nodes, setEdges],
+  );
 
   // Sync local nodes with global state when elements change (e.g., from modal OR deletion)
   useEffect(() => {
@@ -275,6 +447,8 @@ const EditorCanvas = () => {
               className="w-full h-full"
               onDrop={onDrop}
               onDragOver={onDragOver}
+              onNodeDrag={onNodeDrag}
+              onNodeDragStop={onNodeDragStop}
               nodes={state.editor.elements}
               onNodesChange={onNodesChange}
               edges={edges}
@@ -283,6 +457,10 @@ const EditorCanvas = () => {
               onInit={setReactFlowInstance}
               fitView
               onPaneClick={handleClickCanvas}
+              onNodesDelete={onNodesDelete}
+              onReconnect={onReconnect}
+              onReconnectStart={onReconnectStart}
+              onReconnectEnd={onReconnectEnd}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               defaultEdgeOptions={{ type: "plus-edge" }}

@@ -56,39 +56,30 @@ export default function SignInPage() {
 
   return (
     <>
-      <style jsx global>{`
-        html,
-        body {
-          background-color: #030303 !important;
-          color-scheme: dark;
-        }
-      `}</style>
-
-      <div className="fixed inset-0 z-[9999] bg-[#030303] flex items-center justify-center overflow-auto font-sans selection:bg-[#E2CBFF]/30 px-6">
-        <div className="w-full max-w-[440px] flex flex-col items-center">
+      <div className="fixed inset-0 z-[9999] bg-background flex items-center justify-center overflow-auto font-sans px-6">
+        <div className="w-full max-w-[400px] flex flex-col items-center">
           <motion.div
             initial="hidden"
             animate={isMounted ? "visible" : "hidden"}
             variants={containerVariants}
             style={{ transformOrigin: "center" }}
-            className="relative w-full bg-white/[0.05] backdrop-blur-3xl border border-white/[0.1] rounded-[2.5rem] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)]"
+            className="relative w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden"
           >
             <motion.div variants={contentVariants} className="p-8 w-full">
-              <div className="flex flex-col items-center gap-10">
+              <div className="flex flex-col items-center gap-8">
                 {/* Header */}
                 <motion.div
                   custom={0}
                   variants={itemVariants}
-                  className="flex flex-col items-center gap-4 text-center"
+                  className="flex flex-col items-center gap-2 text-center"
                 >
-                  <div className="p-3 rounded-2xl bg-white/[0.05] border border-white/[0.1] shadow-2xl transition-all hover:border-white/[0.3]">
-                    <Sparkles className="w-8 h-8 text-[#E2CBFF]" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Sparkles className="w-6 h-6 text-primary" />
                   </div>
-                  <div className="space-y-1">
-                    <h1 className="text-2xl font-black text-white tracking-widest uppercase">
-                      Automify
-                    </h1>
-                  </div>
+                  <h1 className="text-xl font-bold tracking-tight">
+                    {/* Title handled by form state or consistent title */}
+                    Welcome to Automify
+                  </h1>
                 </motion.div>
 
                 {/* Auth Form Area */}
@@ -101,23 +92,6 @@ export default function SignInPage() {
                 </motion.div>
               </div>
             </motion.div>
-          </motion.div>
-
-          {/* Global Footer */}
-          <motion.div
-            custom={2}
-            initial="hidden"
-            animate={isMounted ? "visible" : "hidden"}
-            variants={itemVariants}
-            className="flex items-center justify-center gap-8 pt-8"
-          >
-            <span className="text-[8px] font-black text-neutral-800 uppercase tracking-[0.3em] cursor-default hover:text-neutral-600 transition-colors">
-              Security Audit
-            </span>
-            <div className="w-1 h-1 rounded-full bg-neutral-900" />
-            <span className="text-[8px] font-black text-neutral-800 uppercase tracking-[0.3em] cursor-default hover:text-neutral-600 transition-colors">
-              Version 3.0.0
-            </span>
           </motion.div>
         </div>
       </div>

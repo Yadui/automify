@@ -162,9 +162,6 @@ export const onCreateWorkflow = async (name: string, description: string) => {
   if (!name || name.trim() === "") {
     return { message: "Workflow name is required" };
   }
-  if (!description || description.trim() === "") {
-    return { message: "Workflow description is required" };
-  }
 
   //create new workflow
   const workflow = await db.workflow.create({
@@ -175,7 +172,7 @@ export const onCreateWorkflow = async (name: string, description: string) => {
     },
   });
 
-  if (workflow) return { message: "workflow created" };
+  if (workflow) return { message: "workflow created", id: workflow.id };
   return { message: "Oops! try again" };
 };
 
