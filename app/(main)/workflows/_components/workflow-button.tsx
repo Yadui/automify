@@ -31,7 +31,7 @@ export default function WorkflowButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size={size} disabled={credits === "0"} className={className}>
+        <Button size={size} disabled={credits === 0} className={className}>
           {children ? children : <Plus />}
         </Button>
       </DialogTrigger>

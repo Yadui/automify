@@ -28,10 +28,25 @@ export type Editor = {
   clipboard: EditorNode | null;
   runStatus: Record<string, "pending" | "running" | "success" | "error">;
   lastRunSuccess: boolean;
+  metadata?: {
+    name: string;
+    description: string;
+    publish: boolean;
+    updatedAt: string;
+  };
+};
+
+export type HistoryItem = {
+  elements: EditorNode[];
+  edges: {
+    id: string;
+    source: string;
+    target: string;
+  }[];
 };
 
 export type HistoryState = {
-  history: Editor[];
+  history: HistoryItem[];
   currentIndex: number;
 };
 
@@ -62,10 +77,21 @@ const initialEditorState: EditorState["editor"] = {
   clipboard: null,
   runStatus: {},
   lastRunSuccess: false,
+  metadata: {
+    name: "Untitled Workflow",
+    description: "",
+    publish: false,
+    updatedAt: new Date().toISOString(),
+  },
 };
 
 const initialHistoryState: HistoryState = {
-  history: [initialEditorState],
+  history: [
+    {
+      elements: initialEditorState.elements,
+      edges: initialEditorState.edges,
+    },
+  ],
   currentIndex: 0,
 };
 
@@ -75,14 +101,20 @@ const initialState: EditorState = {
 };
 
 // Helper to push current editor state to history (max 50 entries)
-const pushToHistory = (state: EditorState, newEditor: Editor): HistoryState => {
+const pushToHistory = (
+  state: EditorState,
+  newEditor: Pick<Editor, "elements" | "edges">,
+): HistoryState => {
   const MAX_HISTORY = 50;
   // Slice history up to current index (discard redo stack)
   const newHistory = state.history.history.slice(
     0,
     state.history.currentIndex + 1,
   );
-  newHistory.push({ ...newEditor });
+  newHistory.push({
+    elements: [...newEditor.elements],
+    edges: [...newEditor.edges],
+  });
   // Limit history size
   if (newHistory.length > MAX_HISTORY) {
     newHistory.shift();
@@ -101,32 +133,56 @@ const editorReducer = (
     case "REDO":
       if (state.history.currentIndex < state.history.history.length - 1) {
         const nextIndex = state.history.currentIndex + 1;
-        const nextEditorState = { ...state.history.history[nextIndex] };
-        const redoState = {
+        const nextItem = state.history.history[nextIndex];
+        const selectedNodeStillExistsRedo = nextItem.elements.find(
+          (node) => node.id === state.editor.selectedNode.id,
+        );
+        return {
           ...state,
-          editor: nextEditorState,
+          editor: {
+            ...state.editor,
+            elements: nextItem.elements,
+            edges: nextItem.edges,
+            selectedNode: selectedNodeStillExistsRedo
+              ? state.editor.selectedNode
+              : initialEditorState.selectedNode,
+            isSidebarOpen: selectedNodeStillExistsRedo
+              ? state.editor.isSidebarOpen
+              : false,
+          },
           history: {
             ...state.history,
             currentIndex: nextIndex,
           },
         };
-        return redoState;
       }
       return state;
 
     case "UNDO":
       if (state.history.currentIndex > 0) {
         const prevIndex = state.history.currentIndex - 1;
-        const prevEditorState = { ...state.history.history[prevIndex] };
-        const undoState = {
+        const prevItem = state.history.history[prevIndex];
+        const selectedNodeStillExistsUndo = prevItem.elements.find(
+          (node) => node.id === state.editor.selectedNode.id,
+        );
+        return {
           ...state,
-          editor: prevEditorState,
+          editor: {
+            ...state.editor,
+            elements: prevItem.elements,
+            edges: prevItem.edges,
+            selectedNode: selectedNodeStillExistsUndo
+              ? state.editor.selectedNode
+              : initialEditorState.selectedNode,
+            isSidebarOpen: selectedNodeStillExistsUndo
+              ? state.editor.isSidebarOpen
+              : false,
+          },
           history: {
             ...state.history,
             currentIndex: prevIndex,
           },
         };
-        return undoState;
       }
       return state;
 
@@ -135,6 +191,7 @@ const editorReducer = (
         ...state.editor,
         elements: action.payload.elements || initialEditorState.elements,
         edges: action.payload.edges,
+        metadata: action.payload.metadata || state.editor.metadata,
       };
       // Skip history push if this is initial load (empty state)
       const isInitialLoad =
@@ -321,6 +378,12 @@ type EditorProps = {
   initialData?: {
     elements: EditorNodeType[];
     edges: { id: string; source: string; target: string }[];
+    metadata?: {
+      name: string;
+      description: string;
+      publish: boolean;
+      updatedAt: string;
+    };
   };
 };
 
@@ -331,6 +394,7 @@ const EditorProvider = (props: EditorProps) => {
       ...initialState.editor,
       elements: props.initialData?.elements || initialState.editor.elements,
       edges: props.initialData?.edges || initialState.editor.edges,
+      metadata: props.initialData?.metadata || initialState.editor.metadata,
     },
   });
 

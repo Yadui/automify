@@ -34,7 +34,7 @@ const Sidebar = ({ user }: SidebarProps) => {
   const pathName = usePathname();
 
   return (
-    <nav className="fixed left-4 pt-10 h-[90vh] z-[50]">
+    <nav className="fixed left-4 pt-10 h-[90vh] z-[50] hidden lg:flex">
       <motion.div
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}

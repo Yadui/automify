@@ -207,7 +207,7 @@ const EditorCanvasCardSingle = ({
         }}
         className={clsx(
           "relative max-w-[400px] min-w-[300px] transition-all duration-300",
-          getBorderClass()
+          getBorderClass(),
         )}
       >
         <CardHeader className="flex flex-row items-center gap-4 relative pr-10">
@@ -286,10 +286,11 @@ const EditorCanvasCardSingle = ({
                   className="text-red-500 focus:text-red-500 focus:bg-red-50"
                   onClick={() => {
                     const updatedElements = state.editor.elements.filter(
-                      (n) => n.id !== nodeId
+                      (n) => n.id !== nodeId,
                     );
                     const updatedEdges = state.editor.edges.filter(
-                      (edge) => edge.source !== nodeId && edge.target !== nodeId
+                      (edge) =>
+                        edge.source !== nodeId && edge.target !== nodeId,
                     );
 
                     dispatch({
@@ -341,12 +342,91 @@ const EditorCanvasCardSingle = ({
       </Card>
 
       {/* Source handle at bottom - hidden for End nodes */}
-      {data.type !== "End" && (
+      {data.type !== "End" && data.type !== "Condition" && (
         <CustomHandle type="source" position={Position.Bottom} id="a" />
+      )}
+
+      {/* Conditional Branching Handles */}
+      {data.type === "Condition" && (
+        <>
+          <CustomHandle
+            type="source"
+            position={Position.Bottom}
+            id="true"
+            style={{ left: "25%", background: "#22c55e" }}
+          >
+            <p className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-green-500 uppercase z-50 pointer-events-none">
+              True
+            </p>
+          </CustomHandle>
+          <CustomHandle
+            type="source"
+            position={Position.Bottom}
+            id="false"
+            style={{ left: "75%", background: "#ef4444" }}
+          >
+            <p className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-red-500 uppercase z-50 pointer-events-none">
+              False
+            </p>
+          </CustomHandle>
+        </>
+      )}
+
+      {/* Conditional Branching Plus Buttons */}
+      {data.type === "Condition" && (
+        <>
+          {/* True Branch Plus */}
+          {!state.editor.edges.some(
+            (edge) => edge.source === nodeId && edge.sourceHandle === "true",
+          ) && (
+            <div className="absolute -bottom-10 left-[25%] -translate-x-1/2 flex items-center justify-center">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dispatch({
+                    type: "OPEN_ADD_MODAL",
+                    payload: {
+                      position: { x: xPos - 100, y: yPos + 200 },
+                      sourceNodeId: nodeId || undefined,
+                      edgeId: "true", // Use this to hint which handle to connect
+                    },
+                  });
+                }}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-green-500 text-white shadow-md hover:scale-110 transition-transform border-2 border-background"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          {/* False Branch Plus */}
+          {!state.editor.edges.some(
+            (edge) => edge.source === nodeId && edge.sourceHandle === "false",
+          ) && (
+            <div className="absolute -bottom-10 left-[75%] -translate-x-1/2 flex items-center justify-center">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dispatch({
+                    type: "OPEN_ADD_MODAL",
+                    payload: {
+                      position: { x: xPos + 100, y: yPos + 200 },
+                      sourceNodeId: nodeId || undefined,
+                      edgeId: "false", // Use this to hint which handle to connect
+                    },
+                  });
+                }}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:scale-110 transition-transform border-2 border-background"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Contextual Plus Button at the bottom of the node - hidden for End nodes and when node has outgoing edge */}
       {data.type !== "End" &&
+        data.type !== "Condition" &&
         !state.editor.edges.some((edge) => edge.source === nodeId) && (
           <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex items-center justify-center">
             <button

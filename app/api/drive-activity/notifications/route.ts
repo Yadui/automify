@@ -20,18 +20,14 @@ export async function POST() {
       where: {
         googleResourceId: channelResourceId,
       },
-      select: { id: true, credits: true },
+      select: { id: true, credits: true, tier: true },
     });
 
     if (!user) {
       return Response.json({ message: "User not found" }, { status: 404 });
     }
 
-    const credits = user.credits
-      ? user.credits === "Unlimited"
-        ? Infinity
-        : parseInt(user.credits)
-      : 0;
+    const credits = user.tier === "Unlimited" ? Infinity : user.credits || 0;
 
     if (credits > 0) {
       const workflows = await db.workflow.findMany({
@@ -67,7 +63,7 @@ export async function POST() {
               if (discordConnection) {
                 await postContentToWebHook(
                   flow.discordTemplate || "",
-                  discordConnection.accessToken // Webhook URL
+                  discordConnection.accessToken, // Webhook URL
                 );
                 flowPath.splice(current, 1);
                 current--; // Adjust index due to splice
@@ -87,7 +83,7 @@ export async function POST() {
                 await postMessageToSlack(
                   slackConnection.accessToken,
                   channels,
-                  flow.slackTemplate || ""
+                  flow.slackTemplate || "",
                 );
                 flowPath.splice(current, 1);
                 current--;
@@ -103,7 +99,7 @@ export async function POST() {
                 await onCreateNewPageInDatabase(
                   flow.notionDbId!,
                   notionConnection.accessToken,
-                  JSON.parse(flow.notionTemplate || "{}")
+                  JSON.parse(flow.notionTemplate || "{}"),
                 );
                 flowPath.splice(current, 1);
                 current--;
@@ -131,7 +127,7 @@ export async function POST() {
                     Authorization: `Bearer ${process.env.CRON_JOB_KEY!}`,
                     "Content-Type": "application/json",
                   },
-                }
+                },
               );
               if (res) {
                 flowPath.splice(current, 1);
@@ -151,10 +147,14 @@ export async function POST() {
           }
 
           // Deduct credits
-          if (user.credits !== "Unlimited") {
+          if (user.tier !== "Unlimited") {
             await db.user.update({
               where: { id: user.id },
-              data: { credits: `${parseInt(user.credits!) - 1}` },
+              data: {
+                credits: {
+                  decrement: 1,
+                },
+              },
             });
           }
         }

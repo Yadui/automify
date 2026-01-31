@@ -1,9 +1,8 @@
-import React from "react";
-import Stripe from "stripe";
 import { validateRequest } from "@/lib/auth";
-import db from "@/lib/db";
-import BillingDashboard from "./_components/billing-dashboard";
 import PageHeader from "@/components/page-header";
+import BillingContent from "./_components/billing-content";
+import { Suspense } from "react";
+import { BillingSkeleton } from "./_components/billing-skeleton";
 
 type Props = {
   searchParams?: { [key: string]: string | undefined };
@@ -15,30 +14,7 @@ const Billing = async (props: Props) => {
   };
 
   const { user } = await validateRequest();
-
-  if (session_id && user) {
-    const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-      typescript: true,
-      apiVersion: "2025-06-30.basil",
-    });
-
-    const session = await stripe.checkout.sessions.listLineItems(session_id);
-
-    await db.user.update({
-      where: {
-        id: Number(user.id),
-      },
-      data: {
-        tier: session.data[0].description,
-        credits:
-          session.data[0].description == "Unlimited"
-            ? "Unlimited"
-            : session.data[0].description == "Pro"
-              ? "100"
-              : "10",
-      },
-    });
-  }
+  if (!user) return null;
 
   return (
     <div className="flex flex-col h-[90vh] w-[92vw]">
@@ -47,7 +23,9 @@ const Billing = async (props: Props) => {
         description="Manage your subscription and payment methods"
       />
       <div className="flex-1 p-6">
-        <BillingDashboard />
+        <Suspense fallback={<BillingSkeleton />}>
+          <BillingContent userId={Number(user.id)} session_id={session_id} />
+        </Suspense>
       </div>
     </div>
   );

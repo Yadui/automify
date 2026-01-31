@@ -7,7 +7,7 @@ export const onCreateNodesEdges = async (
   flowId: string,
   nodes: string,
   edges: string,
-  flowPath: string
+  flowPath: string,
 ) => {
   try {
     const flow = await db.workflow.update({
@@ -40,19 +40,20 @@ export const onFlowPublish = async (workflowId: string, state: boolean) => {
 
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { credits: true },
+      select: { credits: true, tier: true },
     });
 
     if (!user) {
       return { error: "User not found" };
     }
 
-    // If publishing, check credits
-    if (state && user.credits !== "Unlimited") {
-      const credits = parseInt(user.credits || "0");
-      if (credits <= 0) {
-        return { error: "Insufficient credits to publish" };
-      }
+    // Check credits only if publishing (not unpublishing)
+    // Note: Credits are deducted on workflow execution, not on publish
+    if (state && user.tier !== "Unlimited" && user.credits <= 0) {
+      return {
+        error:
+          "Insufficient credits. Run workflows to earn more or upgrade your plan.",
+      };
     }
 
     const published = await db.workflow.update({
@@ -65,13 +66,6 @@ export const onFlowPublish = async (workflowId: string, state: boolean) => {
     });
 
     if (published.publish) {
-      // Deduct credits only when publishing
-      if (user.credits !== "Unlimited") {
-        await db.user.update({
-          where: { id: userId },
-          data: { credits: `${parseInt(user.credits!) - 1}` },
-        });
-      }
       return { message: "Workflow published successfully" };
     }
     return { message: "Workflow unpublished" };

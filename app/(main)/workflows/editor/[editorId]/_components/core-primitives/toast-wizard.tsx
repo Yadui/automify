@@ -30,10 +30,17 @@ const ToastWizard = () => {
   const [message, setMessage] = useState(metadata.message || "");
   const [type, setType] = useState(metadata.type || "success");
 
+  // Sync state when selectedNode changes
+  React.useEffect(() => {
+    const newMeta = selectedNode.data.metadata || {};
+    setMessage(newMeta.message || "");
+    setType(newMeta.type || "success");
+  }, [selectedNode.id, selectedNode.data.metadata]);
+
   const handleTest = () => {
     const parsedMessage = parseVariables(
       message || "Toast message",
-      state.editor.elements
+      state.editor.elements,
     );
     switch (type) {
       case "success":

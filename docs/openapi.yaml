@@ -1,0 +1,336 @@
+openapi: 3.0.3
+info:
+  title: Automify API
+  description: |
+    API documentation for Automify workflow automation platform.
+
+    ## Authentication
+    Most endpoints require authentication via session cookies (managed by Lucia Auth).
+    OAuth endpoints use token-based authentication with respective providers.
+
+    ## Rate Limiting
+    - **Standard API**: 60 requests/minute
+    - **Workflow runs**: 30 runs/minute per user
+    - **Auth endpoints**: 5 attempts/minute
+    - **Webhooks**: 100 requests/minute per workflow
+
+    Rate limit headers are included in responses:
+    - `X-RateLimit-Limit`: Maximum requests allowed
+    - `X-RateLimit-Remaining`: Requests remaining in window
+    - `X-RateLimit-Reset`: Seconds until window reset
+  version: 1.0.0
+  contact:
+    name: Automify Support
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://your-domain.com/api
+    description: Production server
+
+tags:
+  - name: Payment
+    description: Stripe payment and subscription endpoints
+  - name: Drive
+    description: Google Drive integration endpoints
+  - name: OAuth
+    description: OAuth authentication flows
+  - name: Auth
+    description: User authentication endpoints
+
+paths:
+  /payment:
+    get:
+      tags:
+        - Payment
+      summary: Get available subscription plans
+      description: Retrieves list of active Stripe price/product configurations
+      responses:
+        "200":
+          description: List of subscription plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StripePlan"
+        "500":
+          description: Failed to fetch plans
+
+    post:
+      tags:
+        - Payment
+      summary: Create checkout session
+      description: Creates a Stripe checkout session for subscription purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - priceId
+              properties:
+                priceId:
+                  type: string
+                  description: Stripe price ID for the subscription tier
+      responses:
+        "200":
+          description: Checkout session URL
+          content:
+            application/json:
+              schema:
+                type: string
+                description: Stripe checkout URL to redirect user
+        "400":
+          description: Invalid price ID
+        "401":
+          description: User not authenticated
+
+  /drive-activity:
+    get:
+      tags:
+        - Drive
+      summary: Start watching Drive changes
+      description: |
+        Sets up a webhook to receive notifications when files change in Google Drive.
+        Requires active Google OAuth connection.
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Successfully started listening
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Listening to changes..."
+        "400":
+          description: Google account not connected
+        "401":
+          description: User not authenticated
+        "500":
+          description: Failed to set up listener
+
+  /drive-activity/notifications:
+    post:
+      tags:
+        - Drive
+      summary: Google Drive push notification
+      description: |
+        Receives push notifications from Google Drive API when files change.
+        This endpoint is called by Google's servers, not by users.
+      parameters:
+        - in: header
+          name: X-Goog-Channel-ID
+          schema:
+            type: string
+          required: true
+        - in: header
+          name: X-Goog-Resource-ID
+          schema:
+            type: string
+          required: true
+        - in: header
+          name: X-Goog-Resource-State
+          schema:
+            type: string
+            enum: [sync, add, remove, update, trash, untrash, change]
+      responses:
+        "200":
+          description: Notification received
+        "400":
+          description: Invalid notification
+
+  /oauth/google/start:
+    get:
+      tags:
+        - OAuth
+      summary: Start Google OAuth flow
+      description: Redirects user to Google OAuth consent screen
+      parameters:
+        - in: query
+          name: redirect
+          schema:
+            type: string
+          description: URL to redirect after successful auth
+      responses:
+        "302":
+          description: Redirect to Google consent screen
+
+  /oauth/google/callback:
+    get:
+      tags:
+        - OAuth
+      summary: Google OAuth callback
+      description: Handles OAuth callback from Google after user authorization
+      parameters:
+        - in: query
+          name: code
+          schema:
+            type: string
+          required: true
+          description: Authorization code from Google
+        - in: query
+          name: state
+          schema:
+            type: string
+          description: Redirect URL encoded in state parameter
+      responses:
+        "302":
+          description: Redirect to connections page or specified redirect URL
+        "400":
+          description: Missing authorization code
+        "500":
+          description: OAuth flow failed
+
+  /oauth/discord/start:
+    get:
+      tags:
+        - OAuth
+      summary: Start Discord OAuth flow
+      description: Redirects user to Discord OAuth for webhook creation
+      responses:
+        "302":
+          description: Redirect to Discord consent screen
+
+  /oauth/slack/start:
+    get:
+      tags:
+        - OAuth
+      summary: Start Slack OAuth flow
+      description: Redirects user to Slack OAuth for workspace access
+      responses:
+        "302":
+          description: Redirect to Slack consent screen
+
+  /oauth/notion/start:
+    get:
+      tags:
+        - OAuth
+      summary: Start Notion OAuth flow
+      description: Redirects user to Notion OAuth for database access
+      responses:
+        "302":
+          description: Redirect to Notion consent screen
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User login
+      description: Authenticate user with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid credentials
+        "429":
+          description: Rate limit exceeded
+
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: User registration
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Account created successfully
+        "400":
+          description: Validation error or email already exists
+        "429":
+          description: Rate limit exceeded
+
+components:
+  schemas:
+    StripePlan:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Stripe price ID
+        nickname:
+          type: string
+          enum: [Free, Pro, Unlimited]
+          description: Plan name
+        active:
+          type: boolean
+        unit_amount:
+          type: integer
+          description: Price in cents
+        currency:
+          type: string
+          example: "usd"
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            name:
+              type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code (optional)
+
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: auth_session
+      description: Session cookie managed by Lucia Auth

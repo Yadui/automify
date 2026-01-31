@@ -17,61 +17,15 @@ import { BackgroundLines } from "@/components/ui/background-lines";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/page-header";
 import WorkflowButton from "../workflows/_components/workflow-button";
+import DashboardStats from "./_components/dashboard-stats";
+import { StatsSkeleton } from "./_components/stats-skeleton";
+import { Suspense } from "react";
 
 const DashboardPage = async () => {
   const { user } = await validateRequest();
 
   if (!user) return null;
   const userId = Number(user.id);
-
-  // Fetch Stats
-  let totalWorkflows = 0;
-  let activeWorkflows = 0;
-  let totalConnections = 0;
-
-  try {
-    const [tw, aw, tc] = await Promise.all([
-      db.workflow.count({ where: { userId } }),
-      db.workflow.count({ where: { userId, publish: true } }),
-      db.connection.count({ where: { userId } }),
-    ]);
-    totalWorkflows = tw;
-    activeWorkflows = aw;
-    totalConnections = tc;
-  } catch (error) {
-    console.error("Dashboard stats fetch failed:", error);
-  }
-
-  const stats = [
-    {
-      title: "Total Workflows",
-      value: totalWorkflows,
-      description: "Automations created",
-      icon: Zap,
-      color: "text-yellow-400",
-    },
-    {
-      title: "Active Flows",
-      value: activeWorkflows,
-      description: "Currently running",
-      icon: Activity,
-      color: "text-green-400",
-    },
-    {
-      title: "Connected Apps",
-      value: totalConnections,
-      description: "Active integrations",
-      icon: Link2,
-      color: "text-blue-400",
-    },
-    {
-      title: "Monthly Tasks",
-      value: "0",
-      description: "Current billing cycle",
-      icon: CreditCard,
-      color: "text-purple-400",
-    },
-  ];
 
   return (
     <div className="flex flex-col h-[90vh] w-[92vw]">
@@ -95,18 +49,9 @@ const DashboardPage = async () => {
 
         <div className="relative z-10 p-6 sm:p-8 space-y-12">
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-            {stats.map((stat) => (
-              <DashboardCard
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                description={stat.description}
-                icon={stat.icon}
-                itemColor={stat.color}
-              />
-            ))}
-          </div>
+          <Suspense fallback={<StatsSkeleton />}>
+            <DashboardStats userId={userId} />
+          </Suspense>
 
           {/* Quick Actions & Recent Content */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -21,6 +21,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { GitBranch, Plus, Trash2, X } from "lucide-react";
 import SmartInput from "../smart-input";
+import { parseVariables } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 
 interface Condition {
@@ -65,10 +66,10 @@ const ConditionWizard = () => {
 
   // Initialize from saved metadata or default
   const [rootLogic, setRootLogic] = useState<"AND" | "OR">(
-    metadata.rootLogic || "AND"
+    metadata.rootLogic || "AND",
   );
   const [conditions, setConditions] = useState<Condition[]>(
-    metadata.conditions || [createEmptyCondition()]
+    metadata.conditions || [createEmptyCondition()],
   );
   const [testResult, setTestResult] = useState<boolean | null>(null);
 
@@ -91,16 +92,20 @@ const ConditionWizard = () => {
   const updateCondition = (
     id: string,
     field: keyof Condition,
-    value: string
+    value: string,
   ) => {
     setConditions(
-      conditions.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+      conditions.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
     );
   };
 
   const evaluateCondition = (c: Condition): boolean => {
-    const left = c.leftOperand;
-    const right = c.rightOperand;
+    const left =
+      typeof c.leftOperand === "string" ? c.leftOperand.trim() : c.leftOperand;
+    const right =
+      typeof c.rightOperand === "string"
+        ? c.rightOperand.trim()
+        : c.rightOperand;
 
     switch (c.operator) {
       case "equals":
@@ -130,7 +135,18 @@ const ConditionWizard = () => {
 
   const handleTest = () => {
     try {
-      const results = conditions.map(evaluateCondition);
+      const results = conditions.map((c) => {
+        const leftParsed = parseVariables(c.leftOperand, state.editor.elements);
+        const rightParsed = parseVariables(
+          c.rightOperand,
+          state.editor.elements,
+        );
+        return evaluateCondition({
+          ...c,
+          leftOperand: leftParsed,
+          rightOperand: rightParsed,
+        });
+      });
       const finalResult =
         rootLogic === "AND" ? results.every((r) => r) : results.some((r) => r);
 
@@ -173,7 +189,7 @@ const ConditionWizard = () => {
     const hasEmpty = conditions.some(
       (c) =>
         !c.leftOperand ||
-        (!UNARY_OPERATORS.includes(c.operator) && !c.rightOperand)
+        (!UNARY_OPERATORS.includes(c.operator) && !c.rightOperand),
     );
     if (hasEmpty) {
       toast.error("Please fill in all condition fields");

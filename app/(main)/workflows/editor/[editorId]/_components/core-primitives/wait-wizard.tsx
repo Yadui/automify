@@ -40,18 +40,18 @@ const WaitWizard = () => {
 
   // Duration mode
   const [durationValue, setDurationValue] = useState(
-    metadata.durationValue || metadata.value || "5"
+    metadata.durationValue || metadata.value || "5",
   );
   const [durationUnit, setDurationUnit] = useState<string>(
-    metadata.durationUnit || metadata.unit || "minutes"
+    metadata.durationUnit || metadata.unit || "minutes",
   );
 
   // Until time mode
   const [targetDateTime, setTargetDateTime] = useState(
-    metadata.targetDateTime || metadata.datetime || ""
+    metadata.targetDateTime || metadata.datetime || "",
   );
   const [timezone, setTimezone] = useState(
-    metadata.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    metadata.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
 
   // Generate human-readable summary

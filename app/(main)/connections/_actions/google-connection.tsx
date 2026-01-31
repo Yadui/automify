@@ -2,31 +2,18 @@
 import { validateRequest } from "@/lib/auth";
 import db from "@/lib/db";
 import { google } from "googleapis";
+import { unstable_noStore as noStore } from "next/cache";
 
-export const getFileMetaData = async () => {
-  const { user } = await validateRequest();
-
-  if (!user) {
-    return { message: "User not found" };
-  }
-
-  // Fetch the first active Google connection for the user
+const setupGoogleClient = async (userId: number) => {
   const connection = await db.connection.findFirst({
-    where: {
-      userId: Number(user.id),
-      provider: "google",
-      status: "active",
-    },
+    where: { userId, provider: "google", status: "active" },
   });
-
-  if (!connection) {
-    return { message: "Google account not connected" };
-  }
+  if (!connection) throw new Error("Google account not connected");
 
   const oauth2Client = new google.auth.OAuth2(
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.BASE_URL}/api/oauth/google/callback`
+    `${process.env.BASE_URL}/api/oauth/google/callback`,
   );
 
   oauth2Client.setCredentials({
@@ -34,14 +21,49 @@ export const getFileMetaData = async () => {
     refresh_token: connection.refreshToken || undefined,
   });
 
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
+  // Proactive refresh if expired or near expiration
+  if (
+    connection.expiresAt &&
+    new Date(connection.expiresAt).getTime() - Date.now() < 300000
+  ) {
+    try {
+      await oauth2Client.getAccessToken();
+    } catch (e) {
+      console.error("Proactive Google refresh failed:", e);
+    }
+  }
+
+  // Handle token refresh events
+  oauth2Client.on("tokens", async (tokens) => {
+    if (tokens.access_token) {
+      await db.connection.update({
+        where: { id: connection.id },
+        data: {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token || undefined,
+          expiresAt: tokens.expiry_date
+            ? new Date(tokens.expiry_date)
+            : undefined,
+        },
+      });
+    }
+  });
+
+  return { oauth2Client, connection };
+};
+
+export const getFileMetaData = async () => {
+  const { user } = await validateRequest();
+  if (!user) return { message: "User not found" };
 
   try {
+    const { oauth2Client } = await setupGoogleClient(Number(user.id));
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
     const response = await drive.files.list();
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching Google Drive metadata:", error);
-    return { message: "Failed to fetch metadata" };
+    return { message: error.message || "Failed to fetch metadata" };
   }
 };
 
@@ -49,26 +71,9 @@ export const getGoogleFolders = async () => {
   const { user } = await validateRequest();
   if (!user) return { message: "User not found", folders: [] };
 
-  const connection = await db.connection.findFirst({
-    where: { userId: Number(user.id), provider: "google", status: "active" },
-  });
-  if (!connection)
-    return { message: "Google account not connected", folders: [] };
-
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.BASE_URL}/api/oauth/google/callback`
-  );
-  oauth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken || undefined,
-  });
-
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-
   try {
-    // Note: With drive.file scope, this only returns folders created by or opened with this app
+    const { oauth2Client } = await setupGoogleClient(Number(user.id));
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
     const response = await drive.files.list({
       q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
       fields: "files(id, name)",
@@ -85,26 +90,9 @@ export const getGoogleFiles = async () => {
   const { user } = await validateRequest();
   if (!user) return { message: "User not found", files: [] };
 
-  const connection = await db.connection.findFirst({
-    where: { userId: Number(user.id), provider: "google", status: "active" },
-  });
-  if (!connection)
-    return { message: "Google account not connected", files: [] };
-
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.BASE_URL}/api/oauth/google/callback`
-  );
-  oauth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken || undefined,
-  });
-
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-
   try {
-    // Note: With drive.file scope, this only returns files created by or opened with this app
+    const { oauth2Client } = await setupGoogleClient(Number(user.id));
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
     const response = await drive.files.list({
       q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
       fields: "files(id, name, mimeType, modifiedTime)",
@@ -122,24 +110,9 @@ export const createGoogleFolder = async (folderName: string) => {
   const { user } = await validateRequest();
   if (!user) return { error: "User not found" };
 
-  const connection = await db.connection.findFirst({
-    where: { userId: Number(user.id), provider: "google", status: "active" },
-  });
-  if (!connection) return { error: "Google account not connected" };
-
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.BASE_URL}/api/oauth/google/callback`
-  );
-  oauth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken || undefined,
-  });
-
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-
   try {
+    const { oauth2Client } = await setupGoogleClient(Number(user.id));
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
     const response = await drive.files.create({
       requestBody: {
         name: folderName,
@@ -160,29 +133,15 @@ export const createGoogleFolder = async (folderName: string) => {
 export const testGoogleDriveStep = async (
   event: "new_file" | "file_updated" | "new_folder",
   config: any,
-  afterTimestamp?: string
+  afterTimestamp?: string,
 ) => {
   const { user } = await validateRequest();
   if (!user) return { error: "User not found" };
 
-  const connection = await db.connection.findFirst({
-    where: { userId: Number(user.id), provider: "google", status: "active" },
-  });
-  if (!connection) return { error: "Google account not connected" };
-
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.BASE_URL}/api/oauth/google/callback`
-  );
-  oauth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken || undefined,
-  });
-
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-
   try {
+    const { oauth2Client } = await setupGoogleClient(Number(user.id));
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
+
     let q = "";
     if (event === "new_file") {
       q = `'${config.folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`;
@@ -212,7 +171,7 @@ export const testGoogleDriveStep = async (
     console.log(
       "[GDrive Test] Files found:",
       files.length,
-      files.map((f) => f.name)
+      files.map((f) => f.name),
     );
 
     // If knownFileIds is provided, look for files NOT in that list
@@ -221,7 +180,7 @@ export const testGoogleDriveStep = async (
       const newFiles = files.filter((f) => f.id && !knownIds.has(f.id));
       console.log(
         "[GDrive Test] New files (not in known list):",
-        newFiles.length
+        newFiles.length,
       );
 
       if (newFiles.length > 0) {
@@ -259,14 +218,56 @@ export const testGoogleDriveStep = async (
   }
 };
 export const getGoogleConnection = async () => {
+  noStore();
   const { user } = await validateRequest();
   if (!user) return null;
 
-  return await db.connection.findFirst({
+  let connection = await db.connection.findFirst({
     where: {
       userId: Number(user.id),
       provider: "google",
       status: "active",
     },
   });
+
+  if (!connection) return null;
+
+  // Self-healing: If email is missing in metadata, fetch it and update DB
+  const metadata = (connection.metadata as any) || {};
+  if (!metadata.email) {
+    try {
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        `${process.env.BASE_URL}/api/oauth/google/callback`,
+      );
+
+      oauth2Client.setCredentials({
+        access_token: connection.accessToken,
+        refresh_token: connection.refreshToken || undefined,
+      });
+
+      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+
+      if (userInfo.data.email) {
+        connection = await db.connection.update({
+          where: { id: connection.id },
+          data: {
+            metadata: {
+              ...metadata,
+              email: userInfo.data.email,
+              name: userInfo.data.name,
+              picture: userInfo.data.picture,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching Google user info for metadata:", error);
+      // Fallback: don't block return, just log logic failure
+    }
+  }
+
+  return connection;
 };

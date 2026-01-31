@@ -20,16 +20,16 @@
 
 ### User Experience
 
-- [ ] **Auto-save** - Periodically save workflow changes
-- [ ] **Empty states** - Better illustrations for "no workflows" etc.
-- [ ] **Onboarding tour** - Guide new users through creating first workflow
-- [ ] **Toast notifications** - More descriptive success/error messages
+- [x] **Auto-save** - Periodically save workflow changes
+- [x] **Empty states** - Better illustrations for "no workflows" etc.
+- [x] **Onboarding tour** - Guide new users through creating first workflow
+- [x] **Toast notifications** - More descriptive success/error messages
 
 ### Visual Polish
 
-- [ ] **Dark/Light mode** - Verify ModeToggle works throughout app
-- [ ] **Loading animations** - Smoother transitions between pages
-- [ ] **Mobile responsiveness** - Optimize for tablet/mobile views
+- [x] **Dark/Light mode** - Verify ModeToggle works throughout app
+- [x] **Loading animations** - Smoother transitions between pages
+- [x] **Mobile responsiveness** - Optimize for tablet/mobile views
 
 ---
 
@@ -37,9 +37,9 @@
 
 ### New Node Types
 
-- [ ] **Conditional logic node** - If/else branching in workflows
+- [x] **Conditional logic node** - If/else branching in workflows
 - [ ] **Loop node** - Iterate over arrays/collections
-- [ ] **HTTP Request node** - Make API calls to external services
+- [x] **HTTP Request node** - Make API calls to external services
 - [ ] **Code/Script node** - Run custom JavaScript
 
 ### Scheduling & Triggers
@@ -50,9 +50,9 @@
 
 ### Data & Configuration
 
-- [ ] **Workflow templates** - Pre-built starter workflows
+- [x] **Workflow templates** - Pre-built starter workflows (Email, Slack, API, Drive)
 - [ ] **Variables/secrets manager** - Store reusable API keys/values
-- [ ] **Import/Export workflows** - JSON export for backup/sharing
+- [x] **Import/Export workflows** - JSON export for backup/sharing
 
 ---
 
@@ -60,21 +60,22 @@
 
 ### Performance
 
-- [ ] **Server-side editor data fetch** - Move from client useEffect to SSR
-- [ ] **Prefetch on hover** - Preload workflow data on card hover
+- [x] **Server-side editor data fetch** - Move from client useEffect to SSR
+- [x] **Prefetch on hover** - Preload workflow data on card hover
+- [x] **Progressive Page Loading** - Shell-first rendering with Suspense & Skeletons
 - [ ] **Database indexes** - Add indexes on frequently queried fields
 
 ### Reliability
 
-- [ ] **Error boundaries** - Graceful error handling in editor
-- [ ] **Retry logic** - Auto-retry failed workflow steps
-- [ ] **Rate limiting** - Prevent API abuse on automations
+- [x] **Error boundaries** - Graceful error handling in editor
+- [x] **Retry logic** - Auto-retry failed workflow steps (3 attempts with exponential backoff)
+- [x] **Rate limiting** - Prevent API abuse on automations (sliding window, 30 runs/min/user)
 
 ### Developer Experience
 
-- [ ] **Test coverage** - Unit/integration tests for core flows
-- [ ] **API documentation** - OpenAPI spec for webhook endpoints
-- [ ] **Logging/monitoring** - Better observability for debugging
+- [x] **Test coverage** - Unit/integration tests for core flows (19 passing tests)
+- [x] **API documentation** - OpenAPI spec for webhook endpoints (`docs/openapi.yaml`)
+- [x] **Logging/monitoring** - Structured logging with levels and context tracking
 
 ---
 
@@ -87,3 +88,8 @@
 - [x] Sticky page headers
 - [x] Wait/End node consolidation
 - [x] Debounced hover menus
+- [x] Trigger node as workflow starter (enforces single trigger per workflow)
+- [x] Wait node execution (proper duration and until-time waiting)
+- [x] Credit deduction on workflow runs (not on publish)
+- [x] Billing dashboard cleanup (removed CreditTracker, added tier icons)
+- [x] Starter node filtering (empty canvas shows only trigger nodes)

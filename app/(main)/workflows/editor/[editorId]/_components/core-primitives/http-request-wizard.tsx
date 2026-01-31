@@ -39,12 +39,12 @@ const HttpRequestWizard = () => {
   const [url, setUrl] = useState(metadata.url || "");
   const [headers, setHeaders] = useState<KeyValue[]>(metadata.headers || []);
   const [queryParams, setQueryParams] = useState<KeyValue[]>(
-    metadata.queryParams || []
+    metadata.queryParams || [],
   );
   const [body, setBody] = useState(metadata.body || "");
   const [authType, setAuthType] = useState(metadata.authType || "none");
   const [apiKeyName, setApiKeyName] = useState(
-    metadata.apiKeyName || "X-API-Key"
+    metadata.apiKeyName || "X-API-Key",
   );
   const [apiKeyValue, setApiKeyValue] = useState(metadata.apiKeyValue || "");
   const [bearerToken, setBearerToken] = useState(metadata.bearerToken || "");
@@ -58,7 +58,7 @@ const HttpRequestWizard = () => {
       // Build headers with auth
       const requestHeaders: Record<string, string> = headers.reduce(
         (acc, curr) => ({ ...acc, [curr.key]: curr.value }),
-        {}
+        {},
       );
 
       if (authType === "api_key" && apiKeyValue) {
@@ -71,7 +71,7 @@ const HttpRequestWizard = () => {
       const queryString = queryParams
         .filter((q) => q.key)
         .map(
-          (q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`
+          (q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`,
         )
         .join("&");
       const finalUrl = queryString ? `${url}?${queryString}` : url;
@@ -140,6 +140,17 @@ const HttpRequestWizard = () => {
                   bearerToken,
                   timeout,
                   eventLabel: `${method} ${new URL(url).hostname}`,
+                  sampleData: testResult
+                    ? {
+                        success: testResult.success,
+                        statusCode: testResult.statusCode,
+                        statusText: testResult.statusText,
+                        headers: testResult.headers,
+                        body: testResult.body,
+                        data: testResult.body, // Backwards compatibility for {{node.data}}
+                        duration: testResult.duration,
+                      }
+                    : node.data.metadata.sampleData, // Preserve existing if no new test
                 },
               },
             };
@@ -178,7 +189,7 @@ const HttpRequestWizard = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <SmartInput
                 value={url}
                 onChange={setUrl}

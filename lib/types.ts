@@ -81,6 +81,12 @@ export type EditorActions =
           source: string;
           target: string;
         }[];
+        metadata?: {
+          name: string;
+          description: string;
+          publish: boolean;
+          updatedAt: string;
+        };
       };
     }
   | {

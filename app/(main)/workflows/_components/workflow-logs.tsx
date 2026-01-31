@@ -64,9 +64,16 @@ const WorkflowLogs = ({ workflowId }: Props) => {
                 <p className="text-muted-foreground">Loading history...</p>
               </div>
             ) : logs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                <History className="w-10 h-10 mb-2 opacity-20" />
-                <p>No execution history found</p>
+              <div className="flex flex-col items-center justify-center py-16 text-center bg-muted/20 rounded-2xl border border-dashed border-border">
+                <div className="p-4 rounded-full bg-muted/40 mb-4">
+                  <History className="w-8 h-8 text-muted-foreground opacity-30" />
+                </div>
+                <h4 className="font-semibold text-foreground">
+                  No history yet
+                </h4>
+                <p className="text-sm text-muted-foreground max-w-[200px] mt-1">
+                  Run this workflow to see execution logs and details here.
+                </p>
               </div>
             ) : (
               logs.map((log) => (

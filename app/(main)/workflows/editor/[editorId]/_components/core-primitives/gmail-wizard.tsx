@@ -1,4 +1,4 @@
-// Replaces existing GmailWizard component content
+"use client";
 import React, { useState, useEffect } from "react";
 import { useEditor } from "@/providers/editor-provider";
 import { useNodeConnections } from "@/providers/connection-provider";
@@ -14,6 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   CheckCircle2,
   PlayCircle,
@@ -26,10 +27,15 @@ import {
   ChevronDown,
   Settings2,
   FileEdit,
+  ShieldCheck,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
-import { sendGmail } from "../../../../../connections/_actions/google-gmail-action";
+import {
+  sendGmail,
+  testGmailConnection,
+} from "../../../../../connections/_actions/google-gmail-action";
+import { getGoogleConnection } from "@/app/(main)/connections/_actions/google-connection";
 import RenderConnectionAccordion from "../render-connection-accordion";
 import SmartInput from "../smart-input";
 import { parseVariables } from "@/lib/utils";
@@ -44,6 +50,7 @@ export const GmailWizard = () => {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
+  const [isDryRun, setIsDryRun] = useState(true);
 
   // Form State
   const [config, setConfig] = useState({
@@ -53,6 +60,26 @@ export const GmailWizard = () => {
     cc: "",
     bcc: "",
   });
+
+  const [connectedEmail, setConnectedEmail] = useState<string>(
+    "Connected Google Account",
+  );
+
+  useEffect(() => {
+    const fetchEmail = async () => {
+      try {
+        const connection = await getGoogleConnection();
+        if (connection) {
+          const meta = connection.metadata as any;
+          const email = meta?.email || meta?.emailAddress;
+          if (email) setConnectedEmail(email);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Google connection email:", error);
+      }
+    };
+    fetchEmail();
+  }, []);
 
   const [testResult, setTestResult] = useState<any>(null);
 
@@ -86,7 +113,7 @@ export const GmailWizard = () => {
                   },
                 },
               }
-            : node
+            : node,
         ),
       },
     });
@@ -104,18 +131,28 @@ export const GmailWizard = () => {
         bcc: parseVariables(config.bcc, state.editor.elements),
       };
 
-      if (!parsedConfig.to) {
-        toast.error("Recipient email is required for testing");
+      if (!isDryRun && !parsedConfig.to) {
+        toast.error("Recipient email is required for sending");
         setLoading(false);
         return;
       }
 
-      const result = await sendGmail(parsedConfig);
-      if (result.success) {
-        setTestResult(result.data);
-        toast.success("Test email sent!");
+      if (isDryRun) {
+        const result = await testGmailConnection();
+        if (result.success) {
+          setTestResult({ ...result.data, isDryRun: true });
+          toast.success("Connection validated successfully!");
+        } else {
+          toast.error(result.error || "Failed to validate connection");
+        }
       } else {
-        toast.error(result.error || "Failed to send test email");
+        const result = await sendGmail(parsedConfig);
+        if (result.success) {
+          setTestResult(result.data);
+          toast.success("Test email sent!");
+        } else {
+          toast.error(result.error || "Failed to send test email");
+        }
       }
     } catch (e) {
       toast.error("An error occurred");
@@ -140,8 +177,8 @@ export const GmailWizard = () => {
                     eventLabel: `Email to: ${config.to}`,
                     sampleData: testResult
                       ? {
-                          messageId: testResult.messageId,
-                          threadId: testResult.threadId,
+                          messageId: testResult.messageId || "mock-id",
+                          threadId: testResult.threadId || "mock-thread",
                           sentAt: new Date().toISOString(),
                           to: config.to,
                           subject: config.subject,
@@ -151,7 +188,7 @@ export const GmailWizard = () => {
                   },
                 },
               }
-            : node
+            : node,
         ),
       },
     });
@@ -183,7 +220,7 @@ export const GmailWizard = () => {
                   step >= s.id
                     ? "bg-primary border-primary text-primary-foreground"
                     : "bg-background border-muted text-muted-foreground",
-                  step === s.id && "ring-4 ring-primary/20"
+                  step === s.id && "ring-4 ring-primary/20",
                 )}
               >
                 {step > s.id ? (
@@ -195,7 +232,7 @@ export const GmailWizard = () => {
               <span
                 className={clsx(
                   "text-[10px] font-medium",
-                  step >= s.id ? "text-primary" : "text-muted-foreground"
+                  step >= s.id ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 {s.title}
@@ -221,7 +258,7 @@ export const GmailWizard = () => {
                       state={state}
                       connection={connection}
                     />
-                  )
+                  ),
                 )}
               </div>
             </div>
@@ -239,7 +276,7 @@ export const GmailWizard = () => {
                   From
                 </Label>
                 <div className="p-2 border rounded-md bg-muted text-sm text-muted-foreground">
-                  Connected Google Account
+                  {connectedEmail}
                 </div>
               </div>
 
@@ -264,7 +301,7 @@ export const GmailWizard = () => {
                   <ChevronDown
                     className={clsx(
                       "w-3 h-3 transition-transform",
-                      showCcBcc && "rotate-180"
+                      showCcBcc && "rotate-180",
                     )}
                   />{" "}
                   Show CC & BCC
@@ -374,37 +411,80 @@ export const GmailWizard = () => {
 
             <div className="space-y-1">
               <h3 className="font-bold">
-                {testResult ? "Test Email Sent!" : "Ready to Test"}
+                {testResult
+                  ? testResult.isDryRun
+                    ? "Validation Successful!"
+                    : "Test Email Sent!"
+                  : "Ready to Test"}
               </h3>
               <p className="text-xs text-muted-foreground max-w-[250px] mx-auto">
                 {testResult
-                  ? "Your test email was sent successfully. Check your sent folder."
-                  : `We'll send a test email to ${config.to}. Make sure the address is correct.`}
+                  ? testResult.isDryRun
+                    ? "Credentials verified. This node is ready to run."
+                    : "Your test email was sent successfully."
+                  : isDryRun
+                    ? "We'll validate your authentication and inputs without sending an email."
+                    : `We'll send a test email to ${config.to}. Make sure the address is correct.`}
               </p>
             </div>
 
             {!testResult && (
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={onTest}
-                disabled={loading}
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                Send Test Email
-              </Button>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 justify-center p-3 rounded-lg bg-muted/30 border border-muted/50">
+                  <Switch
+                    id="dry-run"
+                    checked={isDryRun}
+                    onCheckedChange={setIsDryRun}
+                  />
+                  <Label htmlFor="dry-run" className="text-sm cursor-pointer">
+                    Validate Only (Dry Run)
+                  </Label>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={onTest}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : isDryRun ? (
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  {isDryRun ? "Validate Configuration" : "Send Test Email"}
+                </Button>
+              </div>
             )}
 
             {testResult && (
               <div className="text-left p-4 rounded-xl border bg-muted/30 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Message ID:</span>
-                  <span className="font-mono">{testResult.messageId}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
-                  <span className="font-bold text-green-600">Sent</span>
-                </div>
+                {testResult.isDryRun ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Auth:</span>
+                      <span className="font-bold text-green-600">Valid</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Account:</span>
+                      <span className="font-medium">
+                        {testResult.emailAddress}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Message ID:</span>
+                      <span className="font-mono">{testResult.messageId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className="font-bold text-green-600">Sent</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

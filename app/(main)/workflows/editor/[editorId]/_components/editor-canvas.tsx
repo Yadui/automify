@@ -21,6 +21,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import EditorCanvasCardSingle from "./editor-canvas-card-single";
+import ErrorBoundary from "@/components/global/error-boundary";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -439,118 +440,122 @@ const EditorCanvas = () => {
   }, [dispatch, state.editor.selectedNode?.id]);
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="flex-1">
-      <ResizablePanel defaultSize={70}>
-        <div className="flex h-full items-center justify-center">
-          <div style={{ width: "100%", height: "100%" }} className="relative">
-            <ReactFlow
-              className="w-full h-full"
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onNodeDrag={onNodeDrag}
-              onNodeDragStop={onNodeDragStop}
-              nodes={state.editor.elements}
-              onNodesChange={onNodesChange}
-              edges={edges}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onInit={setReactFlowInstance}
-              fitView
-              onPaneClick={handleClickCanvas}
-              onNodesDelete={onNodesDelete}
-              onReconnect={onReconnect}
-              onReconnectStart={onReconnectStart}
-              onReconnectEnd={onReconnectEnd}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              defaultEdgeOptions={{ type: "plus-edge" }}
-            >
-              <Controls position="top-left" />
-              <MiniMap
-                position="bottom-left"
-                className="!bg-background"
-                zoomable
-                pannable
-              />
-              <Background
-                //@ts-ignore
-                variant="dots"
-                gap={12}
-                size={1}
-              />
-            </ReactFlow>
+    <ErrorBoundary>
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel defaultSize={70}>
+          <div className="flex h-full items-center justify-center">
+            <div style={{ width: "100%", height: "100%" }} className="relative">
+              <ReactFlow
+                className="w-full h-full"
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onNodeDrag={onNodeDrag}
+                onNodeDragStop={onNodeDragStop}
+                nodes={state.editor.elements}
+                onNodesChange={onNodesChange}
+                edges={edges}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onInit={setReactFlowInstance}
+                fitView
+                onPaneClick={handleClickCanvas}
+                onNodesDelete={onNodesDelete}
+                onReconnect={onReconnect}
+                onReconnectStart={onReconnectStart}
+                onReconnectEnd={onReconnectEnd}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                defaultEdgeOptions={{ type: "plus-edge" }}
+              >
+                <Controls position="top-left" />
+                <MiniMap
+                  position="bottom-left"
+                  className="!bg-background"
+                  zoomable
+                  pannable
+                />
+                <Background
+                  //@ts-ignore
+                  variant="dots"
+                  gap={12}
+                  size={1}
+                />
+              </ReactFlow>
 
-            {/* Top-right Add Node button - hidden when sidebar is open */}
-            {!state.editor.isSidebarOpen &&
-              state.editor.elements.length > 0 && (
-                <div className="absolute top-4 right-4 z-10">
-                  <Button
-                    onClick={() => {
-                      // Get the last node's position to place the new one below it
-                      const lastNode =
-                        state.editor.elements[state.editor.elements.length - 1];
-                      const newY = lastNode ? lastNode.position.y + 200 : 200;
-                      const newX = lastNode ? lastNode.position.x : 250;
-                      dispatch({
-                        type: "OPEN_ADD_MODAL",
-                        payload: {
-                          position: { x: newX, y: newY },
-                          sourceNodeId: lastNode?.id,
-                        },
-                      });
-                    }}
-                    className="gap-2 shadow-lg"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Node
-                  </Button>
-                </div>
-              )}
-
-            {state.editor.elements.length === 0 &&
-              !state.editor.isAddModalOpen && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[40]">
-                  <div className="bg-background/80 backdrop-blur-sm p-12 rounded-3xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center gap-6 text-center pointer-events-auto shadow-2xl animate-in zoom-in-95 relative z-[41]">
-                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary animate-pulse">
-                      <Plus size={40} />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-3xl font-bold">
-                        Start your automation
-                      </h3>
-                      <p className="text-muted-foreground max-w-[300px]">
-                        Click the button below to add your first trigger and
-                        begin building your flow.
-                      </p>
-                    </div>
+              {/* Top-right Add Node button - hidden when sidebar is open */}
+              {!state.editor.isSidebarOpen &&
+                state.editor.elements.length > 0 && (
+                  <div className="absolute top-4 right-4 z-10">
                     <Button
-                      size="lg"
                       onClick={() => {
+                        // Get the last node's position to place the new one below it
+                        const lastNode =
+                          state.editor.elements[
+                            state.editor.elements.length - 1
+                          ];
+                        const newY = lastNode ? lastNode.position.y + 200 : 200;
+                        const newX = lastNode ? lastNode.position.x : 250;
                         dispatch({
                           type: "OPEN_ADD_MODAL",
-                          payload: { position: { x: 250, y: 200 } },
+                          payload: {
+                            position: { x: newX, y: newY },
+                            sourceNodeId: lastNode?.id,
+                          },
                         });
                       }}
-                      className="rounded-full px-8 h-14 text-lg font-bold shadow-xl hover:shadow-primary/20 transition-all font-mono"
+                      className="gap-2 shadow-lg"
                     >
-                      ADD TRIGGER
+                      <Plus className="w-4 h-4" />
+                      Add Node
                     </Button>
                   </div>
-                </div>
-              )}
-            <AddStepModal />
+                )}
+
+              {state.editor.elements.length === 0 &&
+                !state.editor.isAddModalOpen && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[40]">
+                    <div className="bg-background/80 backdrop-blur-sm p-12 rounded-3xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center gap-6 text-center pointer-events-auto shadow-2xl animate-in zoom-in-95 relative z-[41]">
+                      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary animate-pulse">
+                        <Plus size={40} />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-3xl font-bold">
+                          Start your automation
+                        </h3>
+                        <p className="text-muted-foreground max-w-[300px]">
+                          Click the button below to add your first trigger and
+                          begin building your flow.
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          dispatch({
+                            type: "OPEN_ADD_MODAL",
+                            payload: { position: { x: 250, y: 200 } },
+                          });
+                        }}
+                        className="rounded-full px-8 h-14 text-lg font-bold shadow-xl hover:shadow-primary/20 transition-all font-mono"
+                      >
+                        ADD TRIGGER
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              <AddStepModal />
+            </div>
           </div>
-        </div>
-      </ResizablePanel>
-      <ResizableHandle />
-      {state.editor.isSidebarOpen && (
-        <ResizablePanel defaultSize={30} className="relative sm:block">
-          <FlowInstance edges={edges} nodes={nodes}>
-            <EditorCanvasSidebar />
-          </FlowInstance>
         </ResizablePanel>
-      )}
-    </ResizablePanelGroup>
+        <ResizableHandle />
+        {state.editor.isSidebarOpen && (
+          <ResizablePanel defaultSize={30} className="relative sm:block">
+            <FlowInstance edges={edges} nodes={nodes}>
+              <EditorCanvasSidebar />
+            </FlowInstance>
+          </ResizablePanel>
+        )}
+      </ResizablePanelGroup>
+    </ErrorBoundary>
   );
 };
 

@@ -41,34 +41,37 @@ const RenderConnectionAccordion = ({
 
   // State for fetching actual connection from database
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(
-    null
+    null,
   );
-  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+  const [googleInfo, setGoogleInfo] = useState<{
+    name?: string;
+    email?: string;
+  } | null>(null);
   const [isNotionConnected, setIsNotionConnected] = useState<boolean | null>(
-    null
+    null,
   );
   const [notionWorkspace, setNotionWorkspace] = useState<string | null>(null);
   const [isDiscordConnected, setIsDiscordConnected] = useState<boolean | null>(
-    null
+    null,
   );
   const [discordWebhookName, setDiscordWebhookName] = useState<string | null>(
-    null
+    null,
   );
 
-  // Ref to track if fetch has already been done (prevents re-fetch on re-render)
-  const hasFetchedRef = React.useRef(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  // Fetch connection status from database (only once on mount)
+  // Fetch connection status from database
   useEffect(() => {
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
-
     const fetchConnections = async () => {
       if (title === "Gmail" || title === "Google Drive") {
         const connection = await getGoogleConnection();
         if (connection) {
           setIsGoogleConnected(true);
-          setGoogleEmail((connection.metadata as any)?.email || null);
+          const meta = connection.metadata as any;
+          setGoogleInfo({
+            name: meta?.name || meta?.displayName,
+            email: meta?.email || meta?.emailAddress,
+          });
         } else {
           setIsGoogleConnected(false);
         }
@@ -101,13 +104,13 @@ const RenderConnectionAccordion = ({
     title === "Gmail" || title === "Google Drive"
       ? isGoogleConnected === true
       : title === "Notion"
-      ? isNotionConnected === true
-      : title === "Discord"
-      ? isDiscordConnected === true
-      : alwaysTrue ||
-        (nodeConnection[connectionKey] &&
-          accessTokenKey &&
-          connectionData[accessTokenKey as keyof Connection]);
+        ? isNotionConnected === true
+        : title === "Discord"
+          ? isDiscordConnected === true
+          : alwaysTrue ||
+            (nodeConnection[connectionKey] &&
+              accessTokenKey &&
+              connectionData[accessTokenKey as keyof Connection]);
 
   const connectedId = React.useMemo(() => {
     if (!isConnected) return undefined;
@@ -117,14 +120,21 @@ const RenderConnectionAccordion = ({
     if (title === "Notion")
       return notionWorkspace || nodeConnection.notionNode.workspaceName;
     if (title === "Google Drive" || title === "Gmail") {
-      return googleEmail || (nodeConnection.googleNode[0] as any)?.email;
+      // Prioritize name, then email. Ensure it's not a URL/Junk.
+      const name = googleInfo?.name;
+      const email =
+        googleInfo?.email || (nodeConnection.googleNode[0] as any)?.email;
+
+      if (name) return name;
+      if (email && email.includes("@")) return email;
+      return undefined;
     }
     return undefined;
   }, [
     isConnected,
     title,
     nodeConnection,
-    googleEmail,
+    googleInfo,
     notionWorkspace,
     discordWebhookName,
   ]);
@@ -143,6 +153,8 @@ const RenderConnectionAccordion = ({
             connected={{ [title]: Boolean(isConnected) }}
             connectedId={connectedId}
             returnUrl={pathname}
+            isConnecting={isConnecting}
+            onConnect={() => setIsConnecting(true)}
           />
           {slackSpecial && isConnected && (
             <div className="p-6">

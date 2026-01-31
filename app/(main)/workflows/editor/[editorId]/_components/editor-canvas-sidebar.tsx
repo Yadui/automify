@@ -13,6 +13,7 @@ import {
   Info,
   ChevronDown,
   Check,
+  Loader2,
 } from "lucide-react";
 import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
 import RenderConnectionAccordion from "./render-connection-accordion";
@@ -66,6 +67,7 @@ import GmailWizard from "./core-primitives/gmail-wizard";
 import SlackWizard from "./slack-wizard";
 import DiscordWizard from "./discord-wizard";
 import NotionWizard from "./notion-wizard";
+import TriggerWizard from "./core-primitives/trigger-wizard";
 
 const EditorCanvasSidebar = () => {
   const { state, dispatch } = useEditor();
@@ -76,7 +78,7 @@ const EditorCanvasSidebar = () => {
   const isNodeActive = selectedNode.data.configStatus === "active";
   const [activeTab, setActiveTab] = useState<string>("configuration");
   const [selectedEvent, setSelectedEvent] = useState<string>(
-    selectedNode.data.metadata?.event || ""
+    selectedNode.data.metadata?.event || "",
   );
 
   useEffect(() => {
@@ -104,7 +106,7 @@ const EditorCanvasSidebar = () => {
     if (nodeConnection.slackNode.slackAccessToken) {
       fetchBotSlackChannels(
         nodeConnection.slackNode.slackAccessToken,
-        setSlackChannels
+        setSlackChannels,
       );
     }
   }, [nodeConnection, setSlackChannels]);
@@ -132,9 +134,34 @@ const EditorCanvasSidebar = () => {
           </Badge>
         </div>
       </div>
-      <div className="flex-1 overflow-auto">
-        <WizardComponent />
-      </div>
+      <Tabs defaultValue="settings" className="flex-1 flex flex-col min-h-0">
+        <div className="px-6 py-2 border-b bg-card">
+          <TabsList className="w-full justify-start h-9 p-0.5 bg-muted/50">
+            <TabsTrigger value="settings" className="flex-1 text-xs">
+              Settings
+            </TabsTrigger>
+            <TabsTrigger value="json" className="flex-1 text-xs">
+              JSON
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent
+          value="settings"
+          className="flex-1 overflow-auto m-0 p-0 animate-in fade-in"
+        >
+          <WizardComponent />
+        </TabsContent>
+        <TabsContent
+          value="json"
+          className="flex-1 overflow-auto m-0 p-4 animate-in fade-in"
+        >
+          <div className="rounded-md bg-muted p-4">
+            <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
+              {JSON.stringify(selectedNode.data, null, 2)}
+            </pre>
+          </div>
+        </TabsContent>
+      </Tabs>
     </aside>
   );
 
@@ -176,6 +203,9 @@ const EditorCanvasSidebar = () => {
   }
   if (selectedNode.data.type === "Notion") {
     return renderWizardInSidebar(NotionWizard);
+  }
+  if (selectedNode.data.type === "Trigger") {
+    return renderWizardInSidebar(TriggerWizard);
   }
 
   return (
@@ -220,6 +250,12 @@ const EditorCanvasSidebar = () => {
               Testing
               {isNodeActive && <Check className="w-3 h-3 text-green-500" />}
             </TabsTrigger>
+            <TabsTrigger
+              value="json"
+              className="flex-1 data-[state=active]:bg-background flex items-center justify-center gap-2"
+            >
+              JSON
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -246,7 +282,7 @@ const EditorCanvasSidebar = () => {
                       className={clsx(
                         selectedEvent
                           ? "text-foreground"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground",
                       )}
                     >
                       {selectedEvent
@@ -263,7 +299,7 @@ const EditorCanvasSidebar = () => {
                         key={event.value}
                         className={clsx(
                           "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-accent transition-colors",
-                          selectedEvent === event.value && "bg-accent"
+                          selectedEvent === event.value && "bg-accent",
                         )}
                         onClick={() => setSelectedEvent(event.value)}
                       >
@@ -298,25 +334,39 @@ const EditorCanvasSidebar = () => {
                 <User2 className="w-4 h-4 text-primary" />
                 2. Connect Account
               </label>
-              <div className="rounded-xl border bg-card/50 overflow-hidden divide-y">
-                {CONNECTIONS.filter(
-                  (connector) =>
-                    connector.title === selectedNode.data.type ||
-                    (selectedNode.data.type === "Email" &&
-                      connector.title === "Google Drive")
-                ).map((connection) => (
-                  <RenderConnectionAccordion
-                    key={connection.title}
-                    state={state}
-                    connection={connection}
-                  />
-                ))}
-                {CONNECTIONS.every(
-                  (c) => c.title !== selectedNode.data.type
-                ) && (
-                  <div className="p-8 text-center text-muted-foreground text-sm">
-                    This app does not require a specialized account connection.
+              <div className="rounded-xl border bg-card/50 overflow-hidden divide-y relative min-h-[100px]">
+                {nodeConnection.isLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-all animate-in fade-in">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                      <p className="text-[10px] text-muted-foreground animate-pulse font-medium">
+                        Checking connection...
+                      </p>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {CONNECTIONS.filter(
+                      (connector) =>
+                        connector.title === selectedNode.data.type ||
+                        (selectedNode.data.type === "Email" &&
+                          connector.title === "Google Drive"),
+                    ).map((connection) => (
+                      <RenderConnectionAccordion
+                        key={connection.title}
+                        state={state}
+                        connection={connection}
+                      />
+                    ))}
+                    {CONNECTIONS.every(
+                      (c) => c.title !== selectedNode.data.type,
+                    ) && (
+                      <div className="p-8 text-center text-muted-foreground text-sm">
+                        This app does not require a specialized account
+                        connection.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -331,7 +381,7 @@ const EditorCanvasSidebar = () => {
                 className="w-full h-11 shadow-lg bg-primary hover:bg-primary/90"
                 onClick={() => {
                   const testingTab = document.querySelector(
-                    '[value="testing"]'
+                    '[value="testing"]',
                   ) as HTMLElement;
                   testingTab?.click();
                 }}
@@ -447,7 +497,7 @@ const EditorCanvasSidebar = () => {
                                   },
                                 },
                               }
-                            : node
+                            : node,
                         ),
                       },
                     });
@@ -456,7 +506,7 @@ const EditorCanvasSidebar = () => {
                       payload: { open: false },
                     });
                     toast.success(
-                      `${selectedNode.data.title} configured successfully!`
+                      `${selectedNode.data.title} configured successfully!`,
                     );
                   }}
                 >
@@ -474,6 +524,22 @@ const EditorCanvasSidebar = () => {
                 >
                   Cancel
                 </Button>
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent
+            value="json"
+            className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-right-4"
+          >
+            <div className="space-y-4">
+              <label className="text-sm font-semibold flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-primary" />
+                Raw Node Data
+              </label>
+              <div className="rounded-md bg-muted p-4">
+                <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
+                  {JSON.stringify(selectedNode.data, null, 2)}
+                </pre>
               </div>
             </div>
           </TabsContent>

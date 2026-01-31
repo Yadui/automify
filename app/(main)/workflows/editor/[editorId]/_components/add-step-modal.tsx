@@ -19,8 +19,16 @@ const AddStepModal = () => {
   const { state, dispatch } = useEditor();
   const [search, setSearch] = useState("");
 
+  const isCanvasEmpty = state.editor.elements.length === 0;
+
   const filteredApps = Object.entries(EditorCanvasDefaultCardTypes).filter(
-    ([name]) => name.toLowerCase().includes(search.toLowerCase())
+    ([name, app]) => {
+      const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
+      if (isCanvasEmpty) {
+        return matchesSearch && app.type === "Trigger";
+      }
+      return matchesSearch;
+    },
   );
 
   const onSelectApp = (type: string, app: any) => {
@@ -30,14 +38,14 @@ const AddStepModal = () => {
     // If splitting an edge, position node between source and target
     if (state.editor.activeEdgeId) {
       const edge = state.editor.edges.find(
-        (e) => e.id === state.editor.activeEdgeId
+        (e) => e.id === state.editor.activeEdgeId,
       );
       if (edge) {
         const sourceNode = state.editor.elements.find(
-          (n) => n.id === edge.source
+          (n) => n.id === edge.source,
         );
         const targetNode = state.editor.elements.find(
-          (n) => n.id === edge.target
+          (n) => n.id === edge.target,
         );
         if (sourceNode && targetNode) {
           // Position new node between source and target
@@ -69,22 +77,26 @@ const AddStepModal = () => {
 
     // Rule: Only one Trigger allowed. If adding another, replace old one.
     let newElements = [...state.editor.elements];
-    if (newNode.type === "Trigger" || newNode.type === "Google Drive") {
-      newElements = newElements.filter(
-        (el) => el.type !== "Trigger" && el.type !== "Google Drive"
-      );
+    const triggerTypes: EditorCanvasTypes[] = [
+      "Trigger",
+      "Google Drive",
+      "Webhook",
+    ];
+
+    if (triggerTypes.includes(newNode.type)) {
+      newElements = newElements.filter((el) => !triggerTypes.includes(el.type));
     }
 
     let newEdges = [...state.editor.edges];
     if (state.editor.activeEdgeId) {
       const splitEdge = newEdges.find(
-        (e) => e.id === state.editor.activeEdgeId
+        (e) => e.id === state.editor.activeEdgeId,
       );
       if (splitEdge) {
         newEdges = newEdges.filter((e) => e.id !== state.editor.activeEdgeId);
         newEdges.push(
           { id: v4(), source: splitEdge.source, target: newNode.id },
-          { id: v4(), source: newNode.id, target: splitEdge.target }
+          { id: v4(), source: newNode.id, target: splitEdge.target },
         );
       }
     } else if (state.editor.sourceNodeId) {
@@ -92,6 +104,7 @@ const AddStepModal = () => {
         id: v4(),
         source: state.editor.sourceNodeId,
         target: newNode.id,
+        sourceHandle: state.editor.edgeId, // Pass the handle ID (e.g., "true" or "false")
       });
     }
 

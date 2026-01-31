@@ -1,7 +1,8 @@
 "use client";
 import InfoBar from "@/components/infobar";
 import Sidebar from "@/components/sidebar";
-import SupportChatbot from "@/components/global/support-chatbot"; // Import Chatbot
+import SupportChatbot from "@/components/global/support-chatbot";
+import { MobileNav } from "@/components/global/mobile-nav";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { getUserInfo } from "./_actions/user-info";
@@ -43,13 +44,14 @@ const Layout = (props: Props) => {
         <main
           className={
             isEditor
-              ? "flex-1 overflow-hidden ml-28"
-              : "flex-1 overflow-auto ml-28"
+              ? "flex-1 overflow-hidden lg:ml-28"
+              : "flex-1 overflow-auto lg:ml-28 p-4 lg:p-0"
           }
         >
           {props.children}
         </main>
         <SupportChatbot />
+        <MobileNav />
       </div>
     </div>
   );

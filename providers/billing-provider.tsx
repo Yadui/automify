@@ -3,14 +3,14 @@
 import React from "react";
 
 type BillingProviderProps = {
-  credits: string;
+  credits: number;
   tier: string;
-  setCredits: React.Dispatch<React.SetStateAction<string>>;
+  setCredits: React.Dispatch<React.SetStateAction<number>>;
   setTier: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const initialValues: BillingProviderProps = {
-  credits: "",
+  credits: 0,
   setCredits: () => undefined,
   tier: "",
   setTier: () => undefined,

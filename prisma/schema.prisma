@@ -17,7 +17,7 @@ model User {
   hashedPassword      String?
   profileImage        String?
   tier                String    @default("Free")
-  credits             String    @default("10")
+  credits             Int       @default(10)
   deletionScheduledAt DateTime? // Null = active, set = scheduled for deletion after 48h
   googleResourceId         String?
   googleResourceExpiration DateTime?
@@ -27,6 +27,19 @@ model User {
   sessions    Session[]
   connections Connection[]
   workflows   Workflow[]
+  licenses    License[]
+}
+
+model License {
+  id           String   @id @default(uuid())
+  licenseKey   String   @unique
+  tier         String
+  creditsAdded Int
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 

@@ -32,11 +32,21 @@ export function parseVariables(content: string, elements: any[]) {
     if (!node) return match;
 
     const sampleData = node.data.metadata?.sampleData || {};
-    if (sampleData[vKey] !== undefined) {
-      if (typeof sampleData[vKey] === "object") {
-        return JSON.stringify(sampleData[vKey]);
+
+    // Support nested keys (e.g. body.subfield)
+    const keys = vKey.split(".");
+    let value = sampleData;
+
+    for (const key of keys) {
+      if (value === undefined || value === null) break;
+      value = value[key];
+    }
+
+    if (value !== undefined) {
+      if (typeof value === "object") {
+        return JSON.stringify(value);
       }
-      return String(sampleData[vKey]);
+      return String(value);
     }
     return match; // Fallback to raw tag if no data
   });

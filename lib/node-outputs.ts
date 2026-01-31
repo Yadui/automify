@@ -3,9 +3,12 @@ export const NODE_OUTPUTS: Record<
   { label: string; value: string; type: string }[]
 > = {
   "HTTP Request": [
-    { label: "Response Data", value: "data", type: "object" },
-    { label: "Phone Status", value: "status", type: "number" },
+    { label: "Status Code", value: "statusCode", type: "number" },
+    { label: "Response Body", value: "body", type: "object" },
+    { label: "Response Data (Deprecated)", value: "data", type: "object" },
     { label: "Response Headers", value: "headers", type: "object" },
+    { label: "Success", value: "success", type: "boolean" },
+    { label: "Duration", value: "duration", type: "string" },
   ],
   Webhook: [
     { label: "Body", value: "body", type: "object" },

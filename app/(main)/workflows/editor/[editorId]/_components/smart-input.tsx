@@ -36,8 +36,13 @@ interface SmartInputProps {
 const getAncestors = (
   nodeId: string,
   nodes: FlowNode[],
-  edges: Edge[]
+  edges: Edge[],
+  visited = new Set<string>(),
 ): FlowNode[] => {
+  // Prevent infinite recursion in cyclic graphs
+  if (visited.has(nodeId)) return [];
+  visited.add(nodeId);
+
   const currentNode = nodes.find((n) => n.id === nodeId);
   if (!currentNode) return [];
 
@@ -45,7 +50,10 @@ const getAncestors = (
   let ancestors: FlowNode[] = [...incomers];
 
   incomers.forEach((incomer) => {
-    ancestors = [...ancestors, ...getAncestors(incomer.id, nodes, edges)];
+    ancestors = [
+      ...ancestors,
+      ...getAncestors(incomer.id, nodes, edges, visited),
+    ];
   });
 
   // Remove duplicates
@@ -176,7 +184,7 @@ const SmartInput = ({
     nodeId: string,
     nodeTitle: string,
     varLabel: string,
-    varValue: string
+    varValue: string,
   ) => {
     // 1. Create Chip Element
     const chip = document.createElement("span");
@@ -357,7 +365,7 @@ const SmartInput = ({
                 className={cn(
                   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] whitespace-pre-wrap break-words cursor-text",
                   className,
-                  type === "textarea" ? "min-h-[80px]" : "overflow-hidden"
+                  type === "textarea" ? "min-h-[80px]" : "overflow-hidden",
                 )}
                 onInput={handleInput}
                 onKeyDown={handleKeyDown}
@@ -387,7 +395,7 @@ const SmartInput = ({
                       return (
                         node.data.title.toLowerCase().includes(term) ||
                         outputs.some((o) =>
-                          o.label.toLowerCase().includes(term)
+                          o.label.toLowerCase().includes(term),
                         )
                       );
                     })
@@ -402,7 +410,7 @@ const SmartInput = ({
                                 .includes(search.toLowerCase()) ||
                               node.data.title
                                 .toLowerCase()
-                                .includes(search.toLowerCase())
+                                .includes(search.toLowerCase()),
                           )
                           .map((output) => (
                             <CommandItem
@@ -413,7 +421,7 @@ const SmartInput = ({
                                   node.id,
                                   node.data.title,
                                   output.label,
-                                  output.value
+                                  output.value,
                                 );
                               }}
                               onMouseDown={(e) => {
@@ -423,7 +431,7 @@ const SmartInput = ({
                                   node.id,
                                   node.data.title,
                                   output.label,
-                                  output.value
+                                  output.value,
                                 );
                               }}
                               className="flex items-center gap-2 cursor-pointer"

@@ -48,6 +48,9 @@ export default function SettingsTabs({
     deletionDate?: string;
   }>({ scheduled: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [disconnectingProvider, setDisconnectingProvider] = useState<
+    string | null
+  >(null);
 
   const connectionLabels: Record<string, { name: string; icon: string }> = {
     google: { name: "Google", icon: "/googleDrive.png" },
@@ -192,15 +195,30 @@ export default function SettingsTabs({
                       <span className="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded-full">
                         Active
                       </span>
-                      <Link href="/connections">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          Disconnect
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 font-medium border border-border/50"
+                        disabled={disconnectingProvider === conn.provider}
+                        onClick={async () => {
+                          const { disconnectConnection } =
+                            await import("../../connections/_actions/connection-actions");
+                          setDisconnectingProvider(conn.provider);
+                          try {
+                            await disconnectConnection(conn.provider);
+                          } catch (error) {
+                            console.error("Disconnect failed:", error);
+                          } finally {
+                            setDisconnectingProvider(null);
+                          }
+                        }}
+                      >
+                        {disconnectingProvider === conn.provider ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Disconnect"
+                        )}
+                      </Button>
                     </div>
                   </div>
                 );

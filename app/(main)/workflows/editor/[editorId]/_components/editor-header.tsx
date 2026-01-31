@@ -8,7 +8,10 @@ import {
 } from "../_actions/workflow-connections";
 import { testGoogleDriveStep } from "../../../../connections/_actions/google-connection";
 import { sendGmail } from "../../../../connections/_actions/google-gmail-action";
-import { onGetWorkflow } from "../../../_actions/workflow-connections";
+import {
+  onGetWorkflow,
+  deductCredit,
+} from "../../../_actions/workflow-connections";
 import {
   getDiscordConnectionUrl,
   postContentToWebHook,
@@ -31,11 +34,14 @@ import {
   Loader2,
   Undo2,
   Redo2,
+  Cloud,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
 import { useEditor } from "@/providers/editor-provider";
 import { parseVariables } from "@/lib/utils";
+import { format } from "date-fns";
+import axios from "axios";
 
 const EditorHeader = () => {
   const pathname = usePathname();
@@ -46,21 +52,17 @@ const EditorHeader = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   useEffect(() => {
-    const fetchWorkflow = async () => {
-      const workflowId = pathname.split("/").pop()!;
-      if (!workflowId) return;
-      const workflow = await onGetWorkflow(workflowId);
-      if (workflow?.name) {
-        setWorkflowName(workflow.name);
+    if (state.editor.metadata) {
+      setWorkflowName(state.editor.metadata.name);
+      setIsPublished(state.editor.metadata.publish);
+      if (state.editor.metadata.updatedAt) {
+        setLastSaved(new Date(state.editor.metadata.updatedAt));
       }
-      if (workflow) {
-        setIsPublished(workflow.publish);
-      }
-    };
-    fetchWorkflow();
-  }, [pathname]);
+    }
+  }, [state.editor.metadata]);
 
   // Build flow from connected edges
   useEffect(() => {
@@ -76,22 +78,43 @@ const EditorHeader = () => {
     setIsFlow(flows);
   }, [state.editor.edges, state.editor.elements]);
 
-  const onFlowAutomation = useCallback(async () => {
-    setIsSaving(true);
-    const workflowId = pathname.split("/").pop()!;
-    const response = await onCreateNodesEdges(
-      workflowId,
-      JSON.stringify(state.editor.elements),
-      JSON.stringify(state.editor.edges),
-      JSON.stringify(isFlow),
-    );
-    if (response) {
-      if (response.message) toast.success(response.message);
-      if (response.error) toast.error(response.error);
-    }
-    setIsSaving(false);
-    return response;
-  }, [state.editor.elements, state.editor.edges, isFlow, pathname]);
+  const onFlowAutomation = useCallback(
+    async (isSilent = false) => {
+      if (!isSilent) setIsSaving(true);
+      const workflowId = pathname.split("/").pop()!;
+      const response = await onCreateNodesEdges(
+        workflowId,
+        JSON.stringify(state.editor.elements),
+        JSON.stringify(state.editor.edges),
+        JSON.stringify(isFlow),
+      );
+      if (response) {
+        if (!isSilent && response.message) toast.success(response.message);
+        if (response.error) toast.error(response.error);
+        if (response.message) {
+          setLastSaved(new Date());
+          // Update state metadata so it doesn't trigger a re-sync loop if we use it for logic
+          // Though here we just update local state for now.
+        }
+      }
+      if (!isSilent) setIsSaving(false);
+      return response;
+    },
+    [state.editor.elements, state.editor.edges, isFlow, pathname],
+  );
+
+  // Auto-save logic
+  useEffect(() => {
+    // Don't auto-save if elements are empty (initial load or truly empty)
+    if (state.editor.elements.length === 0) return;
+
+    const timer = setTimeout(() => {
+      console.log("Auto-saving workflow...");
+      onFlowAutomation(true);
+    }, 3000); // 3 seconds debounce
+
+    return () => clearTimeout(timer);
+  }, [state.editor.elements, state.editor.edges, onFlowAutomation]);
 
   // Get execution order (BFS from trigger nodes)
   const getExecutionOrder = useCallback(() => {
@@ -100,7 +123,17 @@ const EditorHeader = () => {
 
     // Find trigger nodes (nodes with no incoming edges)
     const targetIds = new Set(edges.map((e) => e.target));
-    const triggerNodes = nodes.filter((n) => !targetIds.has(n.id));
+    let triggerNodes = nodes.filter((n) => !targetIds.has(n.id));
+
+    // If no start nodes found (cycle) or specific Trigger node exists, prioritize Trigger types
+    if (triggerNodes.length === 0 && nodes.length > 0) {
+      triggerNodes = nodes.filter(
+        (n) =>
+          n.type === "Trigger" ||
+          n.data.type === "Trigger" ||
+          n.type === "Onboarding Trigger", // Future proofing
+      );
+    }
 
     const visited = new Set<string>();
     const order: string[] = [];
@@ -363,6 +396,137 @@ const EditorHeader = () => {
           } else {
             throw new Error(res.message || "Failed to post to Slack");
           }
+        } else if (nodeType === "Wait") {
+          // Wait node execution
+          const waitConfig = node.data?.metadata?.config;
+          const startedAt = new Date().toISOString();
+          let waitMs = 0;
+
+          if (waitConfig?.type === "duration") {
+            const value = Number(waitConfig.value) || 0;
+            const unit = waitConfig.unit || "seconds";
+
+            // Convert to milliseconds
+            switch (unit) {
+              case "seconds":
+                waitMs = value * 1000;
+                break;
+              case "minutes":
+                waitMs = value * 60 * 1000;
+                break;
+              case "hours":
+                waitMs = value * 60 * 60 * 1000;
+                break;
+              case "days":
+                waitMs = value * 24 * 60 * 60 * 1000;
+                break;
+              default:
+                waitMs = value * 1000;
+            }
+
+            toast.info(`Waiting for ${value} ${unit}...`);
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+          } else if (waitConfig?.type === "until_time") {
+            const targetTime = new Date(waitConfig.datetime).getTime();
+            const now = Date.now();
+            waitMs = Math.max(0, targetTime - now);
+
+            if (waitMs > 0) {
+              const targetDate = new Date(waitConfig.datetime);
+              toast.info(`Waiting until ${targetDate.toLocaleString()}...`);
+              await new Promise((resolve) => setTimeout(resolve, waitMs));
+            } else {
+              toast.info("Target time already passed, continuing immediately.");
+            }
+          }
+
+          const resumedAt = new Date().toISOString();
+          nodeResultData = {
+            startedAt,
+            resumedAt,
+            waitDuration: waitMs,
+            waitedMs: waitMs,
+          };
+          toast.success(`Wait complete`);
+        } else if (nodeType === "HTTP Request") {
+          // HTTP Request execution
+          const metadata = node.data?.metadata || {};
+          const method = metadata.method || "GET";
+          const rawUrl = parseVariables(metadata.url || "", currentElements);
+
+          if (!rawUrl) throw new Error("HTTP Request URL is missing");
+
+          // Build headers
+          const requestHeaders: Record<string, string> = (
+            metadata.headers || []
+          ).reduce(
+            (
+              acc: Record<string, string>,
+              curr: { key: string; value: string },
+            ) => {
+              if (curr.key)
+                acc[curr.key] = parseVariables(curr.value, currentElements);
+              return acc;
+            },
+            {},
+          );
+
+          // Handle auth
+          if (metadata.authType === "api_key" && metadata.apiKeyValue) {
+            requestHeaders[metadata.apiKeyName || "X-API-Key"] = parseVariables(
+              metadata.apiKeyValue,
+              currentElements,
+            );
+          } else if (metadata.authType === "bearer" && metadata.bearerToken) {
+            requestHeaders["Authorization"] =
+              `Bearer ${parseVariables(metadata.bearerToken, currentElements)}`;
+          }
+
+          // Build query string
+          const queryParams = metadata.queryParams || [];
+          const queryString = queryParams
+            .filter((q: { key: string }) => q.key)
+            .map(
+              (q: { key: string; value: string }) =>
+                `${encodeURIComponent(q.key)}=${encodeURIComponent(parseVariables(q.value, currentElements))}`,
+            )
+            .join("&");
+          const finalUrl = queryString ? `${rawUrl}?${queryString}` : rawUrl;
+
+          // Parse body if present
+          let bodyData;
+          if (["POST", "PUT", "PATCH"].includes(method) && metadata.body) {
+            try {
+              const parsedBody = parseVariables(metadata.body, currentElements);
+              bodyData = JSON.parse(parsedBody);
+            } catch {
+              bodyData = metadata.body;
+            }
+          }
+
+          toast.info(`Executing ${method} ${new URL(rawUrl).hostname}...`);
+          const startTime = Date.now();
+
+          const response = await axios({
+            method,
+            url: finalUrl,
+            headers: requestHeaders,
+            data: bodyData,
+            timeout: (metadata.timeout || 30) * 1000,
+          });
+
+          const duration = Date.now() - startTime;
+          nodeResultData = {
+            success: true,
+            statusCode: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            body: response.data,
+            duration: `${duration}ms`,
+          };
+          toast.success(
+            `HTTP Request: ${response.status} ${response.statusText}`,
+          );
         } else {
           // Standard delay for other nodes
           await new Promise((resolve) => setTimeout(resolve, 800));
@@ -421,7 +585,17 @@ const EditorHeader = () => {
     });
 
     if (allSuccess) {
-      toast.success("Workflow run completed successfully!");
+      // Deduct credit on successful run
+      const creditResult = await deductCredit();
+      if (creditResult.error) {
+        toast.warning(`Workflow completed but ${creditResult.error}`);
+      } else if (creditResult.remaining !== undefined) {
+        toast.success(
+          `Workflow completed! Credits remaining: ${creditResult.remaining}`,
+        );
+      } else {
+        toast.success("Workflow run completed successfully!");
+      }
     } else {
       toast.error("Workflow run failed. Fix errors and try again.");
     }
@@ -495,6 +669,14 @@ const EditorHeader = () => {
         <div className="flex items-center gap-2">
           <Workflow className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium text-sm">{workflowName}</span>
+          {lastSaved && (
+            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-muted/30 border border-muted/50">
+              <Cloud className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                Last saved {format(lastSaved, "HH:mm:ss")}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

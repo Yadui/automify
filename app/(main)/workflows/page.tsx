@@ -3,6 +3,10 @@ import WorkflowButton from "./_components/workflow-button";
 import Workflows from "./_components";
 import PageHeader from "@/components/page-header";
 import WorkflowSearch from "./_components/workflow-search";
+import { OnboardingModal } from "@/components/global/onboarding-modal";
+import { Suspense } from "react";
+import { WorkflowsSkeleton } from "./_components/workflows-skeleton";
+import WorkflowTemplatesModal from "./_components/workflow-templates-modal";
 
 interface Props {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -18,12 +22,18 @@ const WorkflowsPage = async ({ searchParams }: Props) => {
         title="Workflows"
         description="Create and manage your automated workflows"
       >
-        <WorkflowButton />
+        <div className="flex items-center gap-2">
+          <WorkflowTemplatesModal />
+          <WorkflowButton />
+        </div>
       </PageHeader>
       <div className="flex-1 p-6 flex flex-col gap-6">
         <WorkflowSearch />
-        <Workflows search={search} />
+        <Suspense fallback={<WorkflowsSkeleton />}>
+          <Workflows search={search} />
+        </Suspense>
       </div>
+      <OnboardingModal />
     </div>
   );
 };

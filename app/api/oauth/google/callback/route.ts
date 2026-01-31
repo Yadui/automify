@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `${baseUrl}/api/oauth/google/callback`
+    `${baseUrl}/api/oauth/google/callback`,
   );
 
   try {
@@ -66,6 +66,10 @@ export async function GET(request: Request) {
         scopes: tokens.scope || undefined,
         metadata: {
           email: googleUser.emailAddress,
+          name: googleUser.displayName,
+          picture: googleUser.photoLink,
+          // Maintain legacy keys for compatibility
+          emailAddress: googleUser.emailAddress,
           displayName: googleUser.displayName,
           photoLink: googleUser.photoLink,
         },
@@ -83,6 +87,10 @@ export async function GET(request: Request) {
         scopes: tokens.scope,
         metadata: {
           email: googleUser.emailAddress,
+          name: googleUser.displayName,
+          picture: googleUser.photoLink,
+          // Maintain legacy keys for compatibility
+          emailAddress: googleUser.emailAddress,
           displayName: googleUser.displayName,
           photoLink: googleUser.photoLink,
         },
@@ -96,7 +104,7 @@ export async function GET(request: Request) {
     console.error("Google OAuth Callback Error:", error);
     return NextResponse.json(
       { error: "Failed to link Google account" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

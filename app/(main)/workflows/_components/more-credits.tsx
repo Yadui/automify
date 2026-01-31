@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription } from "@/components/ui/card";
 // Remove unused props parameter if not needed
 export default function MoreCredits() {
   const { credits } = useBilling();
-  return credits !== "0" ? (
+  return credits !== 0 ? (
     <></>
   ) : (
     <Card>

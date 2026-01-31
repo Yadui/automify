@@ -1,7 +1,7 @@
 import { WorkflowFormSchema } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -37,34 +37,41 @@ const Workflowform = ({ subTitle, title, onClose }: Props) => {
     },
   });
 
-  // Use isSubmitting to track async form submission and lock button
-  const isLoading = form.formState.isLoading;
-  const isSubmitting = form.formState.isSubmitting;
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (values: z.infer<typeof WorkflowFormSchema>) => {
-    // Fallback: If values are empty/partial but RHF state has them, use getValues()
-    // This handles edge cases where RHF's handleSubmit argument is unexpectedly empty
-    const formData = values.name ? values : form.getValues();
+    if (isLoading) return; // Prevent double submission
+    setIsLoading(true);
 
-    console.log("Submitting with:", formData);
+    try {
+      // Fallback: If values are empty/partial but RHF state has them, use getValues()
+      // This handles edge cases where RHF's handleSubmit argument is unexpectedly empty
+      const formData = values.name ? values : form.getValues();
 
-    const workflow = await onCreateWorkflow(
-      formData.name,
-      formData.description || "",
-    );
-    if (workflow) {
-      toast.message(workflow.message);
-      if (workflow.id) {
-        router.push(`/workflows/editor/${workflow.id}`);
-      } else {
-        router.refresh();
+      console.log("Submitting with:", formData);
+
+      const workflow = await onCreateWorkflow(
+        formData.name,
+        formData.description || "",
+      );
+      if (workflow) {
+        toast.message(workflow.message);
+        if (workflow.id) {
+          router.push(`/workflows/editor/${workflow.id}`);
+        } else {
+          router.refresh();
+        }
       }
-    }
-    if (onClose) {
-      onClose();
-    } else {
-      setClose();
+      if (onClose) {
+        onClose();
+      } else {
+        setClose();
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -75,7 +82,7 @@ const Workflowform = ({ subTitle, title, onClose }: Props) => {
         className="flex flex-col gap-4 text-left"
       >
         <FormField
-          disabled={isSubmitting}
+          disabled={isLoading}
           control={form.control}
           name="name"
           render={({ field }) => (
@@ -91,7 +98,7 @@ const Workflowform = ({ subTitle, title, onClose }: Props) => {
           )}
         />
         <FormField
-          disabled={isSubmitting}
+          disabled={isLoading}
           control={form.control}
           name="description"
           render={({ field }) => (
