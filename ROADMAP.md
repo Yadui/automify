@@ -59,6 +59,22 @@
 - [ ] **Variables/secrets manager** - Store reusable API keys/values
 - [x] **Import/Export workflows** - JSON export for backup/sharing
 
+## Performance Optimizations
+
+### Backend & Database
+
+- [ ] **DB Query Optimization** - Add indexes to `User.email` and `Workflow.userId`
+- [ ] **Connection Pooling** - Configure Prisma Accelerate/PgBouncer for high-traffic handling
+- [ ] **Edge Execution** - Run workflow triggers on edge locations to reduce latency
+- [ ] **Resource Cleanup** - Auto-delete old `WorkflowLog` entries older than 30 days
+
+### Frontend Efficiency
+
+- [x] **Progressive Page Loading** - Suspense & Skeletons implemented <!-- id: perf-1 -->
+- [ ] **Lazy-Loaded Wizards** - Only load complex node settings when clicked
+- [ ] **Asset Minification** - Optimize Three.js/Particles bundles
+- [ ] **Canvas Rendering** - Switch to canvas-based flow rendering for workflows with 50+ nodes
+
 ---
 
 ## Technical Improvements
