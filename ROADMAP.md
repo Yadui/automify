@@ -13,6 +13,10 @@
 - [x] **Undo/Redo** - Track node changes and allow reverting
 - [x] **Node copy/paste** - Duplicate nodes within editor
 - [x] **Keyboard shortcuts** - Delete nodes (Del), save (Cmd+S), undo/redo (Cmd+Z)
+- [ ] **Workflow Global Variables** - Save workspace-wide secrets/constants (e.g. API Keys)
+- [ ] **Canvas Mini-map** - Navigate large workflows more easily
+- [ ] **Node Versioning** - Revert individual node changes
+- [x] **JSON Inspector** - View raw node state in configuration sidebar <!-- id: compl-1 -->
 
 ---
 
@@ -40,6 +44,7 @@
 - [x] **Conditional logic node** - If/else branching in workflows
 - [ ] **Loop node** - Iterate over arrays/collections
 - [x] **HTTP Request node** - Make API calls to external services
+- [x] **Advanced HTTP Variables** - Auto-export `statusCode`, `body`, `success`, `duration`
 - [ ] **Code/Script node** - Run custom JavaScript
 
 ### Scheduling & Triggers
@@ -93,3 +98,7 @@
 - [x] Credit deduction on workflow runs (not on publish)
 - [x] Billing dashboard cleanup (removed CreditTracker, added tier icons)
 - [x] Starter node filtering (empty canvas shows only trigger nodes)
+- [x] **Admin Credit Multiplier** - Manually add credits to any user (Admin Dashboard)
+- [x] **Condition Logic Parser** - Resolve `{{variables}}` during test execution
+- [x] **Toast State Isolation** - Independent wizard state for multiple toast nodes
+- [x] **JSON Inspector Tab** - Integrated raw data view for debugging nodes
