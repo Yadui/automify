@@ -6,6 +6,7 @@ import {
   CircuitBoard,
   Database,
   GitBranch,
+  Github,
   MousePointerClickIcon,
   Timer,
   Webhook,
@@ -26,7 +27,6 @@ const APP_ICONS: Record<string, string> = {
   Slack: "/slack.png",
   Discord: "/discord.png",
   Notion: "/notion.png",
-  GitHub: "/github.png",
 };
 
 const EditorCanvasIconHelper = ({ type }: Props) => {
@@ -53,6 +53,8 @@ const EditorCanvasIconHelper = ({ type }: Props) => {
       return <Webhook className="flex-shrink-0" size={30} />;
     case "Google Calendar":
       return <Calendar className="flex-shrink-0" size={30} />;
+    case "GitHub":
+      return <Github className="flex-shrink-0" size={30} />;
     case "Trigger":
       return <MousePointerClickIcon className="flex-shrink-0" size={30} />;
     case "Action":

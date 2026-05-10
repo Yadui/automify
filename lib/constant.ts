@@ -201,7 +201,7 @@ export const CONNECTIONS: Connection[] = [
   {
     title: "GitHub",
     description: "Connect your GitHub to automate repositories and scripts",
-    image: "/github.png",
+    image: "",
     connectionKey: "githubNode",
     accessTokenKey: "accessToken",
   },

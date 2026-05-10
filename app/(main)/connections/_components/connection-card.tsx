@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Github, Loader2 } from "lucide-react";
 
 interface ConnectionCardProps {
   description: string;
@@ -35,6 +35,8 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
   isLocked = false,
   onConnect,
 }) => {
+  const isGitHub = title === "GitHub";
+
   // Helper to build OAuth URL with optional returnUrl
   const getOAuthUrl = (provider: string): string => {
     let base = "";
@@ -93,13 +95,17 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
     <Card className="flex w-full items-center justify-between">
       <CardHeader className="flex flex-col gap-4">
         <div className="flex flex-row gap-2">
-          <Image
-            src={icon}
-            alt={title}
-            height={30}
-            width={30}
-            className="object-contain"
-          />
+          {isGitHub ? (
+            <Github className="h-[30px] w-[30px] flex-shrink-0" />
+          ) : (
+            <Image
+              src={icon}
+              alt={title}
+              height={30}
+              width={30}
+              className="object-contain"
+            />
+          )}
         </div>
         <div>
           <CardTitle className="text-lg">{title}</CardTitle>

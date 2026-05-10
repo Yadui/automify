@@ -13,7 +13,9 @@ import {
   Loader2,
   Undo2,
   Clock,
+  Github,
 } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
@@ -52,12 +54,15 @@ export default function SettingsTabs({
     string | null
   >(null);
 
-  const connectionLabels: Record<string, { name: string; icon: string }> = {
+  const connectionLabels: Record<
+    string,
+    { name: string; icon?: string; Icon?: React.ComponentType<{ className?: string }> }
+  > = {
     google: { name: "Google", icon: "/googleDrive.png" },
     discord: { name: "Discord", icon: "/discord.png" },
     notion: { name: "Notion", icon: "/notion.png" },
     slack: { name: "Slack", icon: "/slack.png" },
-    github: { name: "GitHub", icon: "/github.svg" },
+    github: { name: "GitHub", Icon: Github },
   };
 
   // Check deletion status on mount
@@ -170,6 +175,7 @@ export default function SettingsTabs({
                   name: conn.provider,
                   icon: "",
                 };
+                const Icon = label.Icon;
                 return (
                   <div
                     key={index}
@@ -177,12 +183,15 @@ export default function SettingsTabs({
                   >
                     <div className="flex items-center gap-3">
                       {label.icon && (
-                        <img
+                        <Image
                           src={label.icon}
                           alt={label.name}
-                          className="w-8 h-8 object-contain"
+                          width={32}
+                          height={32}
+                          className="object-contain"
                         />
                       )}
+                      {Icon && <Icon className="h-8 w-8" />}
                       <div>
                         <p className="font-medium">{label.name}</p>
                         <p className="text-xs text-muted-foreground">
