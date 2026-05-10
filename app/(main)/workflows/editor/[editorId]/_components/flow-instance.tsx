@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { useNodeConnections } from "@/providers/connection-provider";
-import { usePathname } from "next/navigation";
+import { EditorCanvasTypes, EditorNodeType } from "@/lib/types";
+import { Rocket, Save } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   onCreateNodesEdges,
@@ -23,36 +23,38 @@ interface NodeConnection {
 
 type Props = {
   children: React.ReactNode;
-  edges: any[];
-  nodes: any[];
+  workflowId: string;
+  edges: { id: string; source: string; target: string }[];
+  nodes: EditorNodeType[];
   nodeConnection?: NodeConnection;
 };
 
-const FlowInstance = ({ children, edges, nodes, nodeConnection }: Props) => {
-  const pathname = usePathname();
-  const [isFlow, setIsFlow] = useState([]);
+const FlowInstance = ({ children, edges, nodes, workflowId }: Props) => {
+  const [isFlow, setIsFlow] = useState<EditorCanvasTypes[]>([]);
+  const canSave = nodes.length > 0;
+  const canPublish = isFlow.length > 0;
 
   const onFlowAutomation = useCallback(async () => {
     const flow = await onCreateNodesEdges(
-      pathname.split("/").pop()!,
+      workflowId,
       JSON.stringify(nodes),
       JSON.stringify(edges),
       JSON.stringify(isFlow)
     );
 
     if (flow) toast.message(flow.message);
-  }, [edges, isFlow, nodes, pathname]);
+  }, [edges, isFlow, nodes, workflowId]);
 
   const onPublishWorkflow = useCallback(async () => {
-    const response = await onFlowPublish(pathname.split("/").pop()!, true);
+    const response = await onFlowPublish(workflowId, true);
     if (response) toast.message(response);
-  }, [pathname]);
+  }, [workflowId]);
 
   const onAutomateFlow = useCallback(() => {
-    const flows: any = [];
+    const flows: EditorCanvasTypes[] = [];
     const connectedEdges = edges.map((edge) => edge.target);
-    connectedEdges.map((target) => {
-      nodes.map((node) => {
+    connectedEdges.forEach((target) => {
+      nodes.forEach((node) => {
         if (node.id === target) {
           flows.push(node.type);
         }
@@ -67,16 +69,26 @@ const FlowInstance = ({ children, edges, nodes, nodeConnection }: Props) => {
   }, [onAutomateFlow]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-3 p-4">
-        <Button onClick={onFlowAutomation} disabled={isFlow.length < 1}>
-          Save
-        </Button>
-        <Button disabled={isFlow.length < 1} onClick={onPublishWorkflow}>
-          Publish
-        </Button>
+    <div className="flex h-full flex-col">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#e5e5e5] bg-white p-4">
+        <div>
+          <p className="text-sm font-semibold text-[#171717]">Workflow</p>
+          <p className="text-xs text-[#666666]">{nodes.length} nodes, {edges.length} links</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onFlowAutomation} disabled={!canSave}>
+            <Save className="mr-2 h-4 w-4" />
+            Save
+          </Button>
+          <Button size="sm" disabled={!canPublish} onClick={onPublishWorkflow}>
+            <Rocket className="mr-2 h-4 w-4" />
+            Publish
+          </Button>
+        </div>
       </div>
-      {children}
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 };

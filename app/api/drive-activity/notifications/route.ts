@@ -4,7 +4,7 @@ import { postMessageToSlack } from "@/app/(main)/connections/_actions/slack-conn
 import db from "@/lib/db";
 import axios from "axios";
 import { headers } from "next/headers";
-import { NextRequest } from "next/server";
+
 
 export default async function handler() {
   console.log("🔴 Changed");

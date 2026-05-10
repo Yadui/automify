@@ -22,71 +22,59 @@ import { Separator } from "@radix-ui/react-separator";
 import { ModeToggle } from "../global/mode-toggle";
 // import { ModeToggle } from '../global/mode-toggle'
 
-interface SidebarProps {
-  // Add actual props here or use 'object'/'unknown' if needed
-}
-
-const MenuOptions = (props: SidebarProps) => {
+const MenuOptions = () => {
   const pathName = usePathname();
 
   return (
-    <nav className="dark:bg-black h-screen overflow-hidden justify-between flex items-center flex-col gap-10 py-6 px-4 w-20 z-1 ">
-      <span className="flex items-center justify-center rounded-full bg-muted p-2 cursor-pointer hover:transform:{rotateY(180deg)}">
-        <CirclePlus />
-      </span>
-      <div className="flex items-center justify-center flex-col gap-8 relative ">
+    <nav className="sticky top-0 flex h-screen w-20 shrink-0 flex-col items-center justify-between gap-10 overflow-hidden bg-white px-4 py-6 shadow-[rgba(0,0,0,0.08)_1px_0px_0px_0px]">
+      <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#171717] shadow-[rgb(235,235,235)_0px_0px_0px_1px] transition-colors hover:bg-[#fafafa]">
+        <CirclePlus className="h-5 w-5" />
+      </Link>
+      <div className="relative flex flex-col items-center justify-center gap-8">
         <TooltipProvider>
           {menuOptions.map((menuItem) => (
-            <ul key={menuItem.name}>
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger>
-                  <li>
-                    <Link
-                      href={menuItem.href}
-                      className={clsx(
-                        "group h-8 w-8 flex items-center justify-center  scale-[1.5] rounded-lg p-[3px]  cursor-pointer",
-                        {
-                          "dark:bg-[#2F006B] bg-[#EEE0FF] ":
-                            pathName === menuItem.href,
-                        }
-                      )}
-                    >
-                      <menuItem.Component
-                        selected={pathName === menuItem.href}
-                      />
-                    </Link>
-                  </li>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  className="bg-black/10 backdrop-blur-xl"
+            <Tooltip key={menuItem.name} delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Link
+                  href={menuItem.href}
+                  aria-label={menuItem.name}
+                  className={clsx(
+                    "group flex h-10 w-10 items-center justify-center rounded-md bg-white text-[#666666] shadow-[rgb(235,235,235)_0px_0px_0px_1px] transition-colors hover:bg-[#fafafa] hover:text-[#171717]",
+                    {
+                      "!bg-[#ebf5ff] !text-[#0068d6] shadow-[rgba(0,104,214,0.18)_0px_0px_0px_1px]":
+                        pathName === menuItem.href,
+                    }
+                  )}
                 >
-                  <p>{menuItem.name}</p>
-                </TooltipContent>
-              </Tooltip>
-            </ul>
+                  <menuItem.Icon className="h-5 w-5" strokeWidth={1.9} />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-white">
+                <p>{menuItem.name}</p>
+              </TooltipContent>
+            </Tooltip>
           ))}
         </TooltipProvider>
-        <Separator />
-        <div className="flex items-center flex-col gap-9 dark:bg-[#353346]/30 py-4 px-2 rounded-full h-80 overflow-hidden border-[1px]">
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <LucideMousePointerClick className="dark:text-white" size={18} />
-            <div className="border-l-2 border-muted-foreground/50 h-6 absolute left-1/2 transform translate-x-[-50%] -bottom-[30px]" />
+        <Separator className="h-px w-8 bg-[#ebebeb]" />
+        <div className="flex h-80 flex-col items-center gap-9 overflow-hidden rounded-full bg-[#fafafa] px-2 py-4 shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+          <div className="relative rounded-full bg-white p-2 shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+            <LucideMousePointerClick className="text-[#171717]" size={18} />
+            <div className="absolute -bottom-[30px] left-1/2 h-6 -translate-x-1/2 border-l border-[#ebebeb]" />
           </div>
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <GitBranch className="text-muted-foreground" size={18} />
-            <div className="border-l-2 border-muted-foreground/50 h-6 absolute left-1/2 transform translate-x-[-50%] -bottom-[30px]"></div>
+          <div className="relative rounded-full bg-white p-2 shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+            <GitBranch className="text-[#666666]" size={18} />
+            <div className="absolute -bottom-[30px] left-1/2 h-6 -translate-x-1/2 border-l border-[#ebebeb]"></div>
           </div>
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <Database className="text-muted-foreground" size={18} />
-            <div className="border-l-2 border-muted-foreground/50 h-6 absolute left-1/2 transform translate-x-[-50%] -bottom-[30px]"></div>
+          <div className="relative rounded-full bg-white p-2 shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+            <Database className="text-[#666666]" size={18} />
+            <div className="absolute -bottom-[30px] left-1/2 h-6 -translate-x-1/2 border-l border-[#ebebeb]"></div>
           </div>
-          <div className="relative dark:bg-[#353346]/70 p-2 rounded-full dark:border-t-[2px] border-[1px] dark:border-t-[#353346]">
-            <GitBranch className="text-muted-foreground" size={18} />
+          <div className="relative rounded-full bg-white p-2 shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+            <GitBranch className="text-[#666666]" size={18} />
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-center flex-col gap-8 ">
+      <div className="flex flex-col items-center justify-center gap-8">
         <ModeToggle />
       </div>
     </nav>

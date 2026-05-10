@@ -1,39 +1,72 @@
 "use server";
-import { createClerkClient } from "@clerk/clerk-sdk-node";
-import { auth } from "@clerk/nextjs/server";
-import { google } from "googleapis";
+import type { Prisma } from "@prisma/client";
+import db from "@/lib/db";
+import {
+  connectorSettingsJsonSchema,
+  type ConnectorSettingsInput,
+  type ConnectorType,
+} from "@/lib/connectors";
 
-export const getFileMetaData = async () => {
-  "use server";
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.OAUTH2_REDIRECT_URI
-  );
+export const onGoogleDriveConnect = async (
+  access_token: string,
+  refresh_token: string | undefined,
+  userId: string,
+  scope?: string
+) => {
+  const connectorType: ConnectorType = "Google Drive";
 
-  const { userId } = await auth();
-
-  if (!userId) {
-    return { message: "User not found" };
+  if (!access_token) {
+    throw new Error("Google access token is missing.");
   }
-  const clerkClient = createClerkClient({
-    secretKey: process.env.CLERK_SECRET_KEY,
-  });
-  const clerkResponse = await clerkClient.users.getUserOauthAccessToken(
-    userId,
-    "oauth_google"
-  );
 
-  const accessToken = clerkResponse.data[0].token;
-
-  oauth2Client.setCredentials({
-    access_token: accessToken,
+  // Check if a connection for this user already exists
+  const existingConnection = await db.google.findFirst({
+    where: { userId },
   });
 
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-  const response = await drive.files.list();
+  const settings = connectorSettingsJsonSchema.parse({
+    accessToken: access_token,
+    refreshToken: refresh_token ?? existingConnection?.refreshToken ?? "",
+    scope: scope ?? "",
+  }) satisfies ConnectorSettingsInput;
+  const prismaSettings = settings as Prisma.InputJsonObject;
 
-  if (response) {
-    return response.data;
+  if (existingConnection) {
+    // If it exists, update the tokens
+    await db.google.update({
+      where: { userId },
+      data: {
+        accessToken: access_token,
+        refreshToken: refresh_token ?? existingConnection.refreshToken,
+        Connections: {
+          upsert: {
+            where: {
+              userId_type: {
+                userId,
+                type: connectorType,
+              },
+            },
+            create: { userId, type: connectorType, settings: prismaSettings },
+            update: { settings: prismaSettings },
+          },
+        },
+      },
+    });
+  } else {
+    // If it's a new connection, create the record and the link in the Connections table
+    await db.google.create({
+      data: {
+        userId,
+        accessToken: access_token,
+        refreshToken: refresh_token ?? "",
+        Connections: {
+          create: {
+            userId,
+            type: connectorType,
+            settings: prismaSettings,
+          },
+        },
+      },
+    });
   }
 };

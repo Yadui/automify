@@ -1,8 +1,8 @@
 "use client";
-import React, { useEffect } from "react";
-import { ModeToggle } from "../global/mode-toggle";
+import React from "react";
 import { Book, Headphones, Search } from "lucide-react";
-import Templates from "../icons/cloud_download";
+import Link from "next/link";
+
 import { Input } from "@/components/ui/input";
 
 import {
@@ -11,72 +11,68 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { UserButton } from "@clerk/nextjs";
 import { useBilling } from "@/providers/billing-provider";
-import { onPaymentDetails } from "@/app/(main)/billing/_actions/payment-connection";
+import AuthAccountButton from "@/components/global/auth-account-button";
 
-interface InfoBarProps {
-  // Add actual props here or use 'object'/'unknown' if needed
-}
+type InfoBarProps = {
+  authSource: "authjs" | "local";
+  userEmail: string;
+  userName: string;
+};
 
-const InfoBar = (props: InfoBarProps) => {
-  const { credits, tier, setCredits, setTier } = useBilling();
-
-  const onGetPayment = async () => {
-    const response = await onPaymentDetails();
-    if (response) {
-      setTier(response.tier!);
-      setCredits(response.credits!);
-    }
-  };
-
-  useEffect(() => {
-    onGetPayment();
-  }, [onGetPayment]);
+const InfoBar = ({ authSource, userEmail, userName }: InfoBarProps) => {
+  const { credits, tier } = useBilling();
+  const displayCredits = credits || "10";
+  const displayTier = tier || "Free";
 
   return (
     <div
-      className="sticky flex flex-row justify-end gap-6 items-center py-4 w-a dark:bg-black/40 backdrop-blur-lg right-0  z-3 
-    border-b bg-background/50 p-6 text"
+      className="sticky top-0 z-30 flex flex-col gap-4 bg-white/90 px-4 py-4 backdrop-blur-xl shadow-[rgba(0,0,0,0.08)_0px_1px_0px_0px] sm:flex-row sm:items-center sm:justify-between sm:px-8"
     >
-      <span className="flex items-center gap-2 font-bold">
-        <p className="text-sm font-light text-gray-300">Credits</p>
-        {tier == "Unlimited" ? (
-          <span>Unlimited</span>
+      <span className="ds-pill w-fit">
+        Credits
+        {displayTier == "Unlimited" ? (
+          <span className="font-semibold">Unlimited</span>
         ) : (
-          <span>
-            {credits}/{tier == "Free" ? "10" : tier == "Pro" && "100"}
+          <span className="font-semibold">
+            {displayCredits}/{displayTier == "Free" ? "10" : displayTier == "Pro" ? "100" : "Unlimited"}
           </span>
         )}
       </span>
-      <span className="flex items-center rounded-full bg-muted px-4">
-        <Search />
+      <span className="flex h-10 w-full items-center gap-2 rounded-md bg-white px-3 shadow-[rgb(235,235,235)_0px_0px_0px_1px] sm:max-w-sm">
+        <Search className="h-4 w-4 text-[#808080]" />
         <Input
           placeholder="Quick Search"
-          className="border-none bg-transparent"
+          className="h-9 border-none bg-transparent px-0 shadow-none focus-visible:outline-none"
         />
       </span>
-      <TooltipProvider>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger>
-            <Headphones />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Contact Support</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <TooltipProvider>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger>
-            <Book />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Guide</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <UserButton />
+      <div className="flex items-center gap-3">
+        <TooltipProvider>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Link href="/support" className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-[#4d4d4d] shadow-[rgb(235,235,235)_0px_0px_0px_1px] transition-colors hover:text-[#171717]">
+                <Headphones className="h-4 w-4" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Contact Support</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <TooltipProvider>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Link href="/guide" className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-[#4d4d4d] shadow-[rgb(235,235,235)_0px_0px_0px_1px] transition-colors hover:text-[#171717]">
+                <Book className="h-4 w-4" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Guide</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <AuthAccountButton source={authSource} email={userEmail} name={userName} />
+      </div>
     </div>
   );
 };

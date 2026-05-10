@@ -21,21 +21,18 @@ export const MaskContainer = ({
     x: number | null;
     y: number | null;
   }>({ x: null, y: null });
-  const containerRef = useRef<any>(null);
-  const updateMousePosition = (e: any) => {
-    const rect = containerRef.current.getBoundingClientRect();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const updateMousePosition = (e: MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
     setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
   useEffect(() => {
-    containerRef.current.addEventListener("mousemove", updateMousePosition);
+    const container = containerRef.current;
+    container?.addEventListener("mousemove", updateMousePosition);
     return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener(
-          "mousemove",
-          updateMousePosition
-        );
-      }
+      container?.removeEventListener("mousemove", updateMousePosition);
     };
   }, []);
 

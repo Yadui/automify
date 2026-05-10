@@ -1,7 +1,13 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import {
+  connectorSettingsJsonSchema,
+  type ConnectorSettingsInput,
+  type ConnectorType,
+} from "@/lib/connectors";
+import { getAppUser } from "@/lib/app-auth";
 import axios from "axios";
 
 export const onDiscordConnect = async (
@@ -13,6 +19,17 @@ export const onDiscordConnect = async (
   guild_name: string,
   guild_id: string
 ) => {
+  const connectorType: ConnectorType = "Discord";
+  const settings = connectorSettingsJsonSchema.parse({
+    channelId: channel_id,
+    webhookId: webhook_id,
+    webhookName: webhook_name,
+    webhookURL: webhook_url,
+    guildName: guild_name,
+    guildId: guild_id,
+  }) satisfies ConnectorSettingsInput;
+  const prismaSettings = settings as Prisma.InputJsonObject;
+
   //check if webhook id params set
   if (webhook_id) {
     //check if webhook exists in database with userid
@@ -44,7 +61,8 @@ export const onDiscordConnect = async (
           connections: {
             create: {
               userId: id,
-              type: "Discord",
+              type: connectorType,
+              settings: prismaSettings,
             },
           },
         },
@@ -81,7 +99,8 @@ export const onDiscordConnect = async (
             connections: {
               create: {
                 userId: id,
-                type: "Discord",
+                type: connectorType,
+                settings: prismaSettings,
               },
             },
           },
@@ -92,7 +111,7 @@ export const onDiscordConnect = async (
 };
 
 export const getDiscordConnectionUrl = async () => {
-  const user = await currentUser();
+  const user = await getAppUser();
   if (user) {
     const webhook = await db.discordWebhook.findFirst({
       where: {
@@ -119,4 +138,25 @@ export const postContentToWebHook = async (content: string, url: string) => {
     return { message: "failed request" };
   }
   return { message: "String empty" };
+};
+
+// Add this function to your existing discord-connections.ts file
+
+export const getDiscordChannels = async () => {
+  const user = await getAppUser();
+  if (!user) return [];
+
+  const connection = await db.discordWebhook.findFirst({
+    where: { userId: user.id },
+  });
+
+  if (!connection) return [];
+
+  // Since the webhook is tied to one channel, we return that as the only option
+  return [
+    {
+      value: connection.channelId,
+      label: connection.name, // The webhook name often matches the channel name
+    },
+  ];
 };

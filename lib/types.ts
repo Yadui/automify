@@ -1,6 +1,6 @@
-import { ConnectionProviderProps } from "@/providers/connection-provider";
-import { Metadata } from "next";
+import type { ConnectionProviderProps } from "@/providers/connection-provider";
 import { z } from "zod";
+import type { ConnectorRelationInput, ConnectorSettingsInput, ConnectorType } from "./connectors";
 
 export const EditUserProfileSchema = z.object({
   email: z.string().email("Required"),
@@ -12,43 +12,59 @@ export const WorkflowFormSchema = z.object({
   description: z.string().min(1, "Required"),
 });
 
-export type ConnectionTypes = "Google Drive" | "Notion" | "Slack" | "Discord";
+export type ConnectionTypes = ConnectorType;
 
 export type Connection = {
   title: ConnectionTypes;
   description: string;
   image: string;
-  connectionKey: keyof ConnectionProviderProps;
+  connectionKey?: keyof ConnectionProviderProps;
   accessTokenKey?: string;
   alwaysTrue?: boolean;
   slackSpecial?: boolean;
+  type?: "Trigger" | "Action";
+  sharedCredentialType?: ConnectionTypes;
+  requiredCredentialScopes?: string[];
+  settingsSchema?: ConnectorSettingsInput;
 };
 
 export type EditorCanvasTypes =
   | "Email"
   | "Condition"
   | "AI"
+  | "Discord"
   | "Slack"
+  | "Gmail"
   | "Google Drive"
   | "Notion"
+  | "Trello"
+  | "GitHub"
   | "Custom Webhook"
   | "Google Calendar"
   | "Trigger"
   | "Action"
   | "Wait";
 
+export type EditorNodeMetadata = Record<string, unknown> & {
+  defaultAction?: string;
+  relations?: ConnectorRelationInput[];
+  settings?: ConnectorSettingsInput;
+};
+
 export type EditorCanvasCardType = {
   title: string;
   description: string;
   completed: boolean;
   current: boolean;
-  metadata: Metadata;
+  metadata: EditorNodeMetadata;
   type: EditorCanvasTypes;
 };
 
 export type EditorNodeType = {
   id: string;
   type: EditorCanvasCardType["type"];
+  selected?: boolean;
+  dragging?: boolean;
   position: {
     x: number;
     y: number;
@@ -85,12 +101,13 @@ export type EditorActions =
       };
     };
 
-export const nodeMapper: Record<
-  "Notion" | "Slack" | "Discord" | "Google Drive",
-  keyof ConnectionProviderProps
-> = {
+export const nodeMapper: Partial<Record<ConnectionTypes, keyof ConnectionProviderProps>> = {
   Notion: "notionNode",
   Slack: "slackNode",
   Discord: "discordNode",
   "Google Drive": "googleNode",
+  Gmail: "googleNode",
+  "Google Calendar": "googleNode",
+  Trello: "trelloNode",
+  GitHub: "githubNode",
 };

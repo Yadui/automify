@@ -1,79 +1,61 @@
+// app/(main)/connections/_components/connection-card.tsx
 import React from "react";
+import Link from "next/link";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Image from "next/image";
-import Link from "next/link";
+import { type ConnectorType } from "@/lib/connectors";
+import ConnectorLogo from "@/components/global/connector-logo";
 
-// Define a specific type for props instead of using any
 interface ConnectionCardProps {
   description: string;
   title: string;
-  icon: string;
-  type: string;
-  connected: { [key: string]: boolean }; // Define the type for connected
+  type: ConnectorType;
+  connected: { [key: string]: boolean };
 }
 
 const ConnectionCard: React.FC<ConnectionCardProps> = ({
   description,
   title,
-  icon,
   type,
   connected,
 }) => {
+  const authUrl = `/api/auth/connect?${new URLSearchParams({
+    type,
+    returnTo: "/connections",
+  }).toString()}`;
+
   return (
-    <Card className="flex w-full items-center justify-between">
-      <CardHeader className="flex flex-col gap-4">
-        <div className="flex flex-row gap-2">
-          <Image
-            src={icon}
-            alt={title}
-            height={30}
-            width={30}
-            className="object-contain"
-          />
+    <Card className="flex w-full flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center">
+      <CardHeader className="flex flex-row items-center gap-4 p-0">
+        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+          <ConnectorLogo type={type} title={title} size={28} />
         </div>
         <div>
-          <CardTitle className="text-lg">{title}</CardTitle>
+          <CardTitle className="text-lg tracking-[-0.32px]">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
       </CardHeader>
-      <div className="flex flex-col items-center gap-2 p-4">
+      <div className="flex flex-col items-start gap-2 sm:items-end">
         {connected[type] ? (
-          <>
-            <div className="border-bg-primary rounded-lg border-2 px-3 py-2 font-bold text-white">
+          <div className="flex items-center gap-2">
+            <div className="ds-pill">
               Connected
             </div>
             <Link
-              href={
-                title === "Discord"
-                  ? process.env.NEXT_PUBLIC_DISCORD_REDIRECT!
-                  : title === "Notion"
-                  ? process.env.NEXT_PUBLIC_NOTION_AUTH_URL!
-                  : title === "Slack"
-                  ? process.env.NEXT_PUBLIC_SLACK_REDIRECT!
-                  : "#"
-              }
-              className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
+              href={authUrl}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-white px-4 text-sm font-medium text-[#171717] shadow-[rgb(235,235,235)_0px_0px_0px_1px] transition-colors hover:bg-[#fafafa]"
             >
-              Refresh
+              Reconnect
             </Link>
-          </>
+          </div>
         ) : (
           <Link
-            href={
-              title === "Discord"
-                ? process.env.NEXT_PUBLIC_DISCORD_REDIRECT!
-                : title === "Notion"
-                ? process.env.NEXT_PUBLIC_NOTION_AUTH_URL!
-                : title === "Slack"
-                ? process.env.NEXT_PUBLIC_SLACK_REDIRECT!
-                : "#"
-            }
-            className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"
+            href={authUrl}
+            className="inline-flex h-10 items-center justify-center rounded-md bg-[#171717] px-4 text-sm font-medium text-white shadow-[rgba(0,0,0,0.08)_0px_0px_0px_1px] transition-colors hover:bg-black"
           >
             Connect
           </Link>

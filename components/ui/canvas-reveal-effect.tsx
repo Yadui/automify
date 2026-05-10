@@ -185,6 +185,22 @@ type Uniforms = {
     type: string;
   };
 };
+type PreparedUniformValue =
+  | number
+  | number[]
+  | number[][]
+  | THREE.Vector2
+  | THREE.Vector3
+  | THREE.Vector3[];
+
+type PreparedUniforms = Record<
+  string,
+  {
+    value: PreparedUniformValue;
+    type?: string;
+  }
+>;
+
 const ShaderMaterial = ({
   source,
   uniforms,
@@ -207,16 +223,16 @@ const ShaderMaterial = ({
     }
     lastFrameTime = timestamp;
 
-    const material: any = ref.current.material;
+    const material = ref.current.material as THREE.ShaderMaterial;
     const timeLocation = material.uniforms.u_time;
     timeLocation.value = timestamp;
   });
 
   const getUniforms = () => {
-    const preparedUniforms: any = {};
+    const preparedUniforms: PreparedUniforms = {};
 
     for (const uniformName in uniforms) {
-      const uniform: any = uniforms[uniformName];
+      const uniform = uniforms[uniformName];
 
       switch (uniform.type) {
         case "uniform1f":
@@ -286,7 +302,7 @@ const ShaderMaterial = ({
   }, [size.width, size.height, source]);
 
   return (
-    <mesh ref={ref as any}>
+    <mesh ref={ref}>
       <planeGeometry args={[2, 2]} />
       <primitive object={material} attach="material" />
     </mesh>

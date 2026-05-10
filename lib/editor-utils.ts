@@ -16,7 +16,12 @@ import { getDiscordConnectionUrl } from "@/app/(main)/connections/_actions/disco
 import { getNotionDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { getNotionConnection } from "@/app/(main)/connections/_actions/notion-connection";
 import { getSlackConnection } from "@/app/(main)/connections/_actions/slack-connection";
-import { DiscordWebhook, Slack } from "@prisma/client";
+
+type GoogleFile = {
+  name: string;
+  kind?: string;
+  mimeType: string;
+};
 
 export const onDragStart = (
   event: React.DragEvent<HTMLDivElement>,
@@ -30,7 +35,7 @@ export const onSlackContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setSlackNode((prev: Slack) => ({
+  nodeConnection.setSlackNode((prev) => ({
     ...prev,
     content: event.target.value,
   }));
@@ -40,7 +45,7 @@ export const onDiscordContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setDiscordNode((prev: DiscordWebhook) => ({
+  nodeConnection.setDiscordNode((prev) => ({
     ...prev,
     content: event.target.value,
   }));
@@ -64,7 +69,7 @@ export const onAddTemplateSlack = (
   nodeConnection: ConnectionProviderProps,
   template: string
 ) => {
-  nodeConnection.setSlackNode((prev: any) => ({
+  nodeConnection.setSlackNode((prev) => ({
     ...prev,
     content: `${prev.content} ${template}`,
   }));
@@ -74,7 +79,7 @@ export const onAddTemplateDiscord = (
   nodeConnection: ConnectionProviderProps,
   template: string
 ) => {
-  nodeConnection.setDiscordNode((prev: any) => ({
+  nodeConnection.setDiscordNode((prev) => ({
     ...prev,
     content: `${prev.content} ${template}`,
   }));
@@ -95,7 +100,7 @@ export const onAddTemplate = (
 export const onConnections = async (
   nodeConnection: ConnectionProviderProps,
   editorState: EditorState,
-  googleFile: any
+  googleFile: GoogleFile | null
 ) => {
   if (editorState.editor.selectedNode.data.title == "Discord") {
     const connection = await getDiscordConnectionUrl();
@@ -116,14 +121,14 @@ export const onConnections = async (
         databaseId: connection.databaseId,
         workspaceName: connection.workspaceName,
         content: {
-          name: googleFile.name,
-          kind: googleFile.kind,
-          type: googleFile.mimeType,
+          name: googleFile?.name ?? "",
+          kind: googleFile?.kind ?? "",
+          type: googleFile?.mimeType ?? "",
         },
       });
 
       if (nodeConnection.notionNode.databaseId !== "") {
-        const response = await getNotionDatabase(
+        await getNotionDatabase(
           nodeConnection.notionNode.databaseId,
           nodeConnection.notionNode.accessToken
         );
@@ -141,7 +146,6 @@ export const onConnections = async (
         botUserId: connection.botUserId,
         teamId: connection.teamId,
         teamName: connection.teamName,
-        userId: connection.userId,
         content: "",
       });
     }
@@ -159,7 +163,7 @@ export const onNotionContent = (
   nodeConnection: ConnectionProviderProps,
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
-  nodeConnection.setNotionNode((prev: any) => ({
+  nodeConnection.setNotionNode((prev) => ({
     ...prev,
     content: event.target.value,
   }));

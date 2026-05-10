@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef, useEffect, useState, useMemo } from "react";
-import { useScroll, useTransform, motion } from "framer-motion";
+import { MotionValue, useScroll, useTransform, motion } from "framer-motion";
 import Image from "next/image";
 
 export const ContainerScroll = ({
@@ -47,7 +47,13 @@ export const ContainerScroll = ({
   );
 };
 
-export const Header = ({ translateY, titleComponent }: any) => {
+export const Header = ({
+  translateY,
+  titleComponent,
+}: {
+  translateY: MotionValue<number>;
+  titleComponent: string | React.ReactNode;
+}) => {
   return (
     <motion.div
       style={{ translateY }}
@@ -63,9 +69,9 @@ export const Card = ({
   scale,
   translateY,
 }: {
-  rotateX: any;
-  scale: any;
-  translateY: any;
+  rotateX: MotionValue<number>;
+  scale: MotionValue<number>;
+  translateY: MotionValue<number>;
 }) => {
   return (
     <motion.div

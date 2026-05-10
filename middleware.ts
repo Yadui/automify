@@ -1,16 +1,43 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { isLocalAuthEnabled, LOCAL_AUTH_COOKIE } from "@/lib/local-auth-config";
+import { nextAuthSecret } from "@/lib/auth-secret";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/forum(.*)"]);
+const protectedRoutes = [
+  "/dashboard(.*)",
+  "/connections(.*)",
+  "/workflows(.*)",
+  "/billing(.*)",
+  "/settings(.*)",
+  "/support(.*)",
+  "/guide(.*)",
+  "/templates(.*)",
+  "/forum(.*)",
+] as const;
 
-export default clerkMiddleware(async (auth, req) => {
-  const { userId, redirectToSignIn } = await auth();
+const isProtectedRoute = (pathname: string) =>
+  protectedRoutes.some((route) => {
+    const basePath = route.replace("(.*)", "");
+    return pathname === basePath || pathname.startsWith(`${basePath}/`);
+  });
 
-  if (!userId && isProtectedRoute(req)) {
-    // Add custom logic to run before redirecting
-
-    return redirectToSignIn();
+export default async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname === "/guide/sign-in") {
+    return NextResponse.redirect(new URL("/guide/apps", req.url));
   }
-});
+
+  const token = await getToken({ req, secret: nextAuthSecret });
+  const hasLocalSession =
+    isLocalAuthEnabled() && Boolean(req.cookies.get(LOCAL_AUTH_COOKIE)?.value);
+
+  if (!token && !hasLocalSession && isProtectedRoute(req.nextUrl.pathname)) {
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
+    return NextResponse.redirect(signInUrl);
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [

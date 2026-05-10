@@ -8,11 +8,17 @@ const WorkflowsPage = () => {
   // const { someProp } = props; // Example if you have props to use
 
   return (
-    <div className="flex flex-col relative">
-      <h1 className="text-4xl sticky  z-[10] p-6 bg-background/50 backdrop-blur-lg flex items-center border-b justify-between">
-        Workflows
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
+      <header className="ds-page-header">
+        <div>
+          <p className="ds-eyebrow">Automation canvas</p>
+          <h1 className="ds-page-title mt-3">Workflows</h1>
+          <p className="mt-3 max-w-2xl leading-7 text-[#4d4d4d]">
+            Create, publish, and manage workflow automations from a dense, repeatable list surface.
+          </p>
+        </div>
         <WorkflowButton />
-      </h1>
+      </header>
       <Workflows />
     </div>
   );

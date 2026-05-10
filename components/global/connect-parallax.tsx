@@ -27,10 +27,6 @@ export const HeroParallax = ({
     target: ref,
     offset: ["start end", "end start"],
   });
-  const { scrollXProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
 
   const springConfig = { stiffness: 300, damping: 30, bounce: 100 };
 

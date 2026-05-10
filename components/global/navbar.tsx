@@ -2,48 +2,45 @@
 import Link from "next/link";
 import React from "react";
 import { MenuIcon, CirclePlus } from "lucide-react";
-import { currentUser } from "@clerk/nextjs/server";
-import { UserButton } from "@clerk/nextjs";
+import { getAppUser } from "@/lib/app-auth";
+import AuthAccountButton from "@/components/global/auth-account-button";
 
-interface NavbarProps {
-  // Add actual props here or use 'object'/'unknown' if needed
-}
-
-const Navbar = async (props: NavbarProps) => {
-  const user = await currentUser();
+const Navbar = async () => {
+  const user = await getAppUser();
   return (
-    <header className="fixed right-0 left-0 mb-4 top-0 py-4 px-4 bg-black/40 backdrop-blur-lg flex items-center border-b-[1px] border-neutral-900 justify-between z-[100]">
-      <aside className="flex items-center gap-[2px]">
-        <p className="text-3xl font-bold">Aut</p>
-        <CirclePlus />
-        <p className="text-3xl font-bold">mify </p>
+    <header className="fixed right-0 left-0 top-0 z-[100] bg-white/90 px-4 py-3 backdrop-blur-xl shadow-[rgba(0,0,0,0.08)_0px_0px_0px_1px]">
+      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4">
+      <aside className="flex items-center gap-1 text-[#171717]">
+        <p className="text-2xl font-semibold tracking-[-0.96px]">Aut</p>
+        <CirclePlus className="h-5 w-5" strokeWidth={2} />
+        <p className="text-2xl font-semibold tracking-[-0.96px]">mify</p>
       </aside>
-      <nav className="absolute left-[50%] top-[50%] transform translate-x-[-50%] translate-y-[-50%] hidden md:block">
-        <ul className="flex items-center gap-4 list-none">
+      <nav className="hidden md:block">
+        <ul className="flex items-center gap-8 list-none text-sm font-medium text-[#171717]">
           <li>
-            <Link href="#">Products</Link>
+            <Link href="#product" className="transition-colors hover:text-[#0072f5]">Product</Link>
           </li>
           <li>
-            <Link href="#">Pricing</Link>
+            <Link href="#workflow" className="transition-colors hover:text-[#0072f5]">Workflow</Link>
           </li>
           <li>
-            <Link href="#">Resources</Link>
+            <Link href="#pricing" className="transition-colors hover:text-[#0072f5]">Pricing</Link>
           </li>
         </ul>
       </nav>
       <aside className="flex items-center gap-4">
         <Link
           href="/dashboard"
-          className="relative inline-flex h-10 overflow-hidden rounded-full p-[2px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
+          className="inline-flex h-10 items-center justify-center rounded-md bg-[#171717] px-4 text-sm font-medium text-white shadow-[rgba(0,0,0,0.08)_0px_0px_0px_1px] transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsla(212,100%,48%,1)]"
         >
-          <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
-          <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-slate-950 px-3 py-1 text-sm font-medium text-white backdrop-blur-3xl">
-            {user ? "Dashboard" : "Get Started"}
-          </span>
+          {user ? "Dashboard" : "Get Started"}
         </Link>
-        <UserButton />
-        <MenuIcon className="md:hidden" />
+        {user && <AuthAccountButton source={user.source} email={user.email} name={user.name} compact />}
+        <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[rgb(235,235,235)_0px_0px_0px_1px] md:hidden" aria-label="Open menu">
+          <MenuIcon className="h-4 w-4" />
+        </button>
       </aside>
+      </div>
     </header>
   );
 };

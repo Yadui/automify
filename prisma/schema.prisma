@@ -31,6 +31,8 @@ model User {
   Slack                 Slack[]
   connections           Connections[]
   workflows             Workflows[]
+  Google                Google?
+
 }
 
 model LocalGoogleCredential {
@@ -48,6 +50,7 @@ model LocalGoogleCredential {
   userId Int  @unique
   user   User @relation(fields: [userId], references: [id])
 }
+
 
 model DiscordWebhook {
   id          String        @id @default(uuid())
@@ -86,13 +89,18 @@ model Notion {
   workspaceName String
   workspaceIcon String
   User          User          @relation(fields: [userId], references: [clerkId])
-  userId        String
+  userId        String        @unique
   connections   Connections[]
 }
 
 model Connections {
   id               String          @id @default(uuid())
-  type             String          @unique
+  type             String
+  settings         Json            @default("{}")
+  relations        Json            @default("[]")
+  nodeId           String?
+  workflowId       String?
+  defaultAction    String?
   DiscordWebhook   DiscordWebhook? @relation(fields: [discordWebhookId], references: [id])
   discordWebhookId String?
   Notion           Notion?         @relation(fields: [notionId], references: [id])
@@ -101,6 +109,13 @@ model Connections {
   userId           String?
   Slack            Slack?          @relation(fields: [slackId], references: [id])
   slackId          String?
+  Google           Google?         @relation(fields: [googleId], references: [id])
+  googleId         String?
+
+  @@unique([userId, type])
+  @@index([workflowId])
+  @@index([nodeId])
+
 }
 
 model Workflows {
@@ -121,4 +136,15 @@ model Workflows {
   description       String
   User              User     @relation(fields: [userId], references: [clerkId])
   userId            String
+}
+
+
+// Add this entire model
+model Google {
+  id             String @id @default(uuid())
+  accessToken    String
+  refreshToken   String?
+  User           User   @relation(fields: [userId], references: [clerkId])
+  userId         String @unique
+  Connections    Connections[]
 }

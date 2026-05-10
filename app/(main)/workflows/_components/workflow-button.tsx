@@ -11,11 +11,12 @@ export default function WorkflowButton() {
   const { setOpen } = useModal();
   const { credits } = useBilling();
 
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.currentTarget.blur();
     setOpen(
       <CustomModal
         title="Create a Workflow Automation"
-        subheading="Workflows are a powerfull that help you automate tasks."
+        subheading="Workflows help you automate repeatable tasks."
       >
         <Workflowform />
       </CustomModal>
@@ -24,7 +25,7 @@ export default function WorkflowButton() {
 
   return (
     <Button
-      size={"icon"}
+      size={"default"}
       {...(credits !== "0"
         ? {
             onClick: handleClick,
@@ -34,6 +35,7 @@ export default function WorkflowButton() {
           })}
     >
       <Plus />
+      New workflow
     </Button>
   );
 }

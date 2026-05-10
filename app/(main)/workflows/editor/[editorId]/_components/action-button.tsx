@@ -7,6 +7,16 @@ import { onCreateNodeTemplate } from "../../../_actions/workflow-connections";
 import { toast } from "sonner";
 import { onCreateNewPageInDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { postMessageToSlack } from "@/app/(main)/connections/_actions/slack-connection";
+import { type ConnectorSettingsInput } from "@/lib/connectors";
+
+type TrelloNode = {
+  token?: string;
+  settings?: ConnectorSettingsInput;
+};
+type GitHubNode = {
+  accessToken?: string;
+  settings?: ConnectorSettingsInput;
+};
 
 // Define specific types
 interface NodeConnection {
@@ -21,8 +31,10 @@ interface NodeConnection {
   notionNode: {
     accessToken: string;
     databaseId: string;
-    content: string;
+    content: string | Record<string, unknown>;
   };
+  trelloNode: TrelloNode;
+  githubNode: GitHubNode;
 }
 
 type Props = {
@@ -60,7 +72,9 @@ const ActionButton = ({
     const response = await onCreateNewPageInDatabase(
       nodeConnection.notionNode.databaseId,
       nodeConnection.notionNode.accessToken,
-      nodeConnection.notionNode.content
+      typeof nodeConnection.notionNode.content === "string"
+        ? nodeConnection.notionNode.content
+        : JSON.stringify(nodeConnection.notionNode.content)
     );
     if (response) {
       nodeConnection.notionNode.content = "";

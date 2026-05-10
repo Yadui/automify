@@ -1,11 +1,12 @@
-import Category from "@/components/icons/category";
-import Logs from "@/components/icons/clipboard";
-import Templates from "@/components/icons/cloud_download";
-import Home from "@/components/icons/home";
-import Payment from "@/components/icons/payment";
-import Settings from "@/components/icons/settings";
-import Workflows from "@/components/icons/workflows";
-import { Connection } from "./types";
+import {
+  CreditCard,
+  LayoutDashboard,
+  PlugZap,
+  Settings2,
+  Workflow,
+} from "lucide-react";
+import { CONNECTIONS } from "./connectors";
+export { CONNECTIONS };
 
 export const clients = [...new Array(10)].map((client, index) => ({
   href: `/${index + 1}.png`,
@@ -93,11 +94,11 @@ export const products = [
 ];
 
 export const menuOptions = [
-  { name: "Dashboard", Component: Home, href: "/dashboard" },
-  { name: "Workflows", Component: Workflows, href: "/workflows" },
-  { name: "Settings", Component: Settings, href: "/settings" },
-  { name: "Connections", Component: Category, href: "/connections" },
-  { name: "Billing", Component: Payment, href: "/billing" },
+  { name: "Dashboard", Icon: LayoutDashboard, href: "/dashboard" },
+  { name: "Workflows", Icon: Workflow, href: "/workflows" },
+  { name: "Settings", Icon: Settings2, href: "/settings" },
+  { name: "Connections", Icon: PlugZap, href: "/connections" },
+  { name: "Billing", Icon: CreditCard, href: "/billing" },
   // { name: "Templates", Component: Templates, href: "/templates" },
   // { name: "Logs", Component: Logs, href: "/logs" },
 ];
@@ -119,6 +120,10 @@ export const EditorCanvasDefaultCardTypes = {
       "Connect with Google drive to trigger actions or to create files and folders.",
     type: "Trigger",
   },
+  Gmail: {
+    description: "Send email or react to matching Gmail messages.",
+    type: "Action",
+  },
   Notion: { description: "Create entries directly in notion.", type: "Action" },
   "Custom Webhook": {
     description:
@@ -133,6 +138,14 @@ export const EditorCanvasDefaultCardTypes = {
     description: "Create a calendar invite.",
     type: "Action",
   },
+  Trello: {
+    description: "Create cards or react to board/list/card updates.",
+    type: "Action",
+  },
+  GitHub: {
+    description: "React to issues/PRs or create linked GitHub issues.",
+    type: "Trigger",
+  },
   Trigger: {
     description: "An event that starts the workflow.",
     type: "Trigger",
@@ -146,36 +159,3 @@ export const EditorCanvasDefaultCardTypes = {
     type: "Action",
   },
 };
-
-export const CONNECTIONS: Connection[] = [
-  {
-    title: "Google Drive",
-    description: "Connect your google drive to listen to folder changes",
-    image: "/googleDrive.png",
-    connectionKey: "googleNode",
-    alwaysTrue: true,
-  },
-  {
-    title: "Discord",
-    description: "Connect your discord to send notification and messages",
-    image: "/discord.png",
-    connectionKey: "discordNode",
-    accessTokenKey: "webhookURL",
-  },
-  {
-    title: "Notion",
-    description: "Create entries in your notion dashboard and automate tasks.",
-    image: "/notion.png",
-    connectionKey: "notionNode",
-    accessTokenKey: "accessToken",
-  },
-  {
-    title: "Slack",
-    description:
-      "Use slack to send notifications to team members through your own custom bot.",
-    image: "/slack.png",
-    connectionKey: "slackNode",
-    accessTokenKey: "slackAccessToken",
-    slackSpecial: true,
-  },
-];

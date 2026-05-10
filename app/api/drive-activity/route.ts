@@ -1,32 +1,38 @@
 import { google } from "googleapis";
-import { auth, createClerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import db from "@/lib/db";
+import { getAppUser } from "@/lib/app-auth";
+import { getOAuthProviderCredentials } from "@/lib/oauth-provider-config";
 
 export async function GET() {
+  const googleCredentials = getOAuthProviderCredentials("google");
+  if (!googleCredentials) {
+    return NextResponse.json({ message: "Google OAuth is not configured" }, { status: 500 });
+  }
+
   const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    googleCredentials.clientId,
+    googleCredentials.clientSecret,
     process.env.OAUTH2_REDIRECT_URI
   );
 
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ message: "User not found" });
+  const user = await getAppUser();
+  if (!user) {
+    return NextResponse.json({ message: "User not found" }, { status: 401 });
   }
 
-  const clerkClient = createClerkClient({
-    secretKey: process.env.CLERK_SECRET_KEY,
+  const googleConnection = await db.google.findUnique({
+    where: { userId: user.id },
   });
-  const clerkResponse = await clerkClient.users.getUserOauthAccessToken(
-    userId,
-    "oauth_google"
-  );
 
-  const accessToken = clerkResponse.data[0].token;
+  if (!googleConnection?.accessToken) {
+    return NextResponse.json({ message: "Google Drive is not connected" }, { status: 404 });
+  }
+
   oauth2Client.setCredentials({
-    access_token: accessToken,
+    access_token: googleConnection.accessToken,
+    refresh_token: googleConnection.refreshToken || undefined,
   });
 
   const drive = google.drive({
@@ -58,7 +64,7 @@ export async function GET() {
     //if listener created store its channel id in db
     const channelStored = await db.user.updateMany({
       where: {
-        clerkId: userId,
+        clerkId: user.id,
       },
       data: {
         googleResourceId: listener.data.resourceId,

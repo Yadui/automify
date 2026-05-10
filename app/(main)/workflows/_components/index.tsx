@@ -10,23 +10,26 @@ interface WorkflowType {
   name: string; // Add required properties
   description: string; // Add required properties
   publish: boolean | null; // Update to allow null
+  nodes?: string | null;
   // Add other properties as needed
 }
 
-// Remove unused props parameter if not needed
+{
+  /* TODO: Make the icons accroding to the apps used in the workflow inside the app */
+}
 export default async function WorkflowsComponent() {
   const workflows = await onGetWorkflows();
   return (
-    <div className="relative flex flex-col gap-4">
-      <section className="flex flex-col m-2">
+    <div className="flex flex-col">
+      <section className="flex flex-col gap-4">
         <MoreCredits />
         {workflows?.length ? (
           workflows.map((flow: WorkflowType) => (
             <Workflow key={flow.id} {...flow} />
           ))
         ) : (
-          <div className="mt-28 flex text-muted-foreground items-center justify-center">
-            No Workflows
+          <div className="ds-card flex min-h-60 items-center justify-center p-8 text-center text-[#4d4d4d]">
+            No workflows yet. Create one to start wiring apps together.
           </div>
         )}
       </section>

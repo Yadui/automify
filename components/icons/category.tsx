@@ -19,8 +19,8 @@ function Category({ selected }: Props) {
         height="8"
         rx="3"
         className={clsx(
-          "dark:group-hover:fill-[#C8C7FF] transition-all dark:fill-[#353346] fill-[#BABABB] group-hover:fill-[#7540A9]",
-          { "dark:!fill-[#C8C7FF] fill-[#7540A9] ": selected }
+          "dark:group-hover:fill-[#ffffff] transition-all dark:fill-[#353346] fill-[#d4d4d4] group-hover:fill-[#171717]",
+          { "dark:!fill-[#ffffff] fill-[#0a72ef] ": selected }
         )}
       />
       <rect
@@ -30,8 +30,8 @@ function Category({ selected }: Props) {
         height="8"
         rx="3"
         className={clsx(
-          "dark:group-hover:fill-[#C8C7FF] transition-all dark:fill-[#353346] fill-[#BABABB] group-hover:fill-[#7540A9]",
-          { "dark:!fill-[#C8C7FF] fill-[#7540A9] ": selected }
+          "dark:group-hover:fill-[#ffffff] transition-all dark:fill-[#353346] fill-[#d4d4d4] group-hover:fill-[#171717]",
+          { "dark:!fill-[#ffffff] fill-[#0a72ef] ": selected }
         )}
       />
       <rect
@@ -41,8 +41,8 @@ function Category({ selected }: Props) {
         height="8"
         rx="3"
         className={clsx(
-          "dark:group-hover:fill-[#C8C7FF] transition-all dark:fill-[#353346] fill-[#BABABB] group-hover:fill-[#7540A9]",
-          { "dark:!fill-[#C8C7FF] fill-[#7540A9] ": selected }
+          "dark:group-hover:fill-[#ffffff] transition-all dark:fill-[#353346] fill-[#d4d4d4] group-hover:fill-[#171717]",
+          { "dark:!fill-[#ffffff] fill-[#0a72ef] ": selected }
         )}
       />
       <rect
@@ -52,8 +52,8 @@ function Category({ selected }: Props) {
         height="8"
         rx="3"
         className={clsx(
-          "dark:group-hover:fill-[#9F54FF] transition-all dark:fill-[#C0BFC4] fill-[#5B5966] group-hover:fill-[#BD8AFF] ",
-          { "dark:!fill-[#7540A9] fill-[#BD8AFF] ": selected }
+          "dark:group-hover:fill-[#ffffff] transition-all dark:fill-[#C0BFC4] fill-[#666666] group-hover:fill-[#171717] ",
+          { "dark:!fill-[#ffffff] fill-[#0a72ef] ": selected }
         )}
       />
     </svg>

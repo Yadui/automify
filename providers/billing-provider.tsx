@@ -18,14 +18,16 @@ const initialValues: BillingProviderProps = {
 
 type WithChildProps = {
   children: React.ReactNode;
+  initialCredits?: string | null;
+  initialTier?: string | null;
 };
 
 const context = React.createContext(initialValues);
 const { Provider } = context;
 
-export const BillingProvider = ({ children }: WithChildProps) => {
-  const [credits, setCredits] = React.useState(initialValues.credits);
-  const [tier, setTier] = React.useState(initialValues.tier);
+export const BillingProvider = ({ children, initialCredits, initialTier }: WithChildProps) => {
+  const [credits, setCredits] = React.useState(initialCredits ?? initialValues.credits);
+  const [tier, setTier] = React.useState(initialTier ?? initialValues.tier);
 
   const values = {
     credits,

@@ -1,40 +1,34 @@
 import { NextResponse, NextRequest } from "next/server";
-import Stripe from "stripe";
+import { billingPlans, isPaidBillingPlanName } from "@/lib/pricing-plans";
+import { getAppUser } from "@/lib/app-auth";
+import { createRazorpayOrder } from "@/lib/razorpay";
 
-export async function GET(req: NextRequest) {
-  const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-    typescript: true,
-    apiVersion: "2024-12-18.acacia",
-  });
+export const runtime = "nodejs";
 
-  const products = await stripe.prices.list({
-    limit: 3,
-  });
-
-  return NextResponse.json(products.data);
+export async function GET() {
+  return NextResponse.json(billingPlans);
 }
 
 export async function POST(req: NextRequest) {
-  const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-    typescript: true,
-    apiVersion: "2024-12-18.acacia",
-  });
-  const data = await req.json();
-  const session = await stripe.checkout.sessions.create({
-    line_items: [
-      {
-        price: data.priceId,
-        quantity: 1,
-      },
-    ],
-    mode: "subscription",
-    success_url:
-      "https://localhost:3000/billing?session_id={CHECKOUT_SESSION_ID}",
-    cancel_url: "https://localhost:3000/billing",
-  });
-  return NextResponse.json(session.url);
-}
+  const user = await getAppUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-export default async function handler() {
-  // ... existing code ...
+  const data = await req.json();
+  const plan = data.plan;
+
+  if (!isPaidBillingPlanName(plan)) {
+    return NextResponse.json({ error: "Choose a paid plan." }, { status: 400 });
+  }
+
+  const order = await createRazorpayOrder({
+    plan,
+    userId: user.id,
+    email: user.email,
+  });
+
+  if (!order.ok) {
+    return NextResponse.json({ error: order.error }, { status: order.status });
+  }
+
+  return NextResponse.json(order);
 }

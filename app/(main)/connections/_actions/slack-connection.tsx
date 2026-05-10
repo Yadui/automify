@@ -1,8 +1,14 @@
 "use server"; // Add this to mark it as a Server Component
 
+import type { Prisma } from "@prisma/client";
 import { Option } from "@/components/ui/multiple-select";
 import db from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import {
+  connectorSettingsJsonSchema,
+  type ConnectorSettingsInput,
+  type ConnectorType,
+} from "@/lib/connectors";
+import { getAppUser } from "@/lib/app-auth";
 import axios from "axios";
 // import { SomeType } from "@/lib/types"; // Import necessary types
 
@@ -21,6 +27,18 @@ export const onSlackConnect = async (
   team_name: string,
   user_id: string
 ): Promise<void> => {
+  const connectorType: ConnectorType = "Slack";
+  const settings = connectorSettingsJsonSchema.parse({
+    appId: app_id,
+    authedUserId: authed_user_id,
+    authedUserToken: authed_user_token,
+    slackAccessToken: slack_access_token,
+    botUserId: bot_user_id,
+    teamId: team_id,
+    teamName: team_name,
+  }) satisfies ConnectorSettingsInput;
+  const prismaSettings = settings as Prisma.InputJsonObject;
+
   if (!slack_access_token) return;
 
   const slackConnection = await db.slack.findFirst({
@@ -40,15 +58,31 @@ export const onSlackConnect = async (
         teamId: team_id,
         teamName: team_name,
         connections: {
-          create: { userId: user_id, type: "Slack" },
+          create: { userId: user_id, type: connectorType, settings: prismaSettings },
         },
       },
+    });
+  } else {
+    await db.connections.upsert({
+      where: {
+        userId_type: {
+          userId: user_id,
+          type: connectorType,
+        },
+      },
+      create: {
+        userId: user_id,
+        type: connectorType,
+        slackId: slackConnection.id,
+        settings: prismaSettings,
+      },
+      update: { settings: prismaSettings, slackId: slackConnection.id },
     });
   }
 };
 
 export const getSlackConnection = async () => {
-  const user = await currentUser();
+  const user = await getAppUser();
   if (user) {
     return await db.slack.findFirst({
       where: { userId: user.id },

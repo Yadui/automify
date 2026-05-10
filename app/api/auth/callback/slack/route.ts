@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { onSlackConnect } from "@/app/(main)/connections/_actions/slack-connection";
+import { getAppUser } from "@/lib/app-auth";
+import { getOAuthRedirectUrl } from "@/lib/oauth-redirect";
 
 export async function GET(req: NextRequest) {
-  // Extract the code parameter from the query string
   const code = req.nextUrl.searchParams.get("code");
+  const state = req.nextUrl.searchParams.get("state");
+  const user = await getAppUser();
 
-  // Check if the code parameter is missing
+  if (!user) {
+    return NextResponse.redirect(
+      getOAuthRedirectUrl(req, state, { connectionError: "auth_failed" })
+    );
+  }
+
   if (!code) {
-    return new NextResponse("Code not provided", { status: 400 });
+    return NextResponse.redirect(
+      getOAuthRedirectUrl(req, state, { connectionError: "no_code" })
+    );
   }
 
   try {
-    // Make a POST request to Slack's OAuth endpoint to exchange the code for an access token
     const response = await fetch("https://slack.com/api/oauth.v2.access", {
       method: "POST",
       headers: {
@@ -26,27 +36,32 @@ export async function GET(req: NextRequest) {
 
     const data = await response.json();
 
-    // Check if the response indicates a failure
     if (!data.ok) {
       throw new Error(data.error || "Slack OAuth failed");
     }
 
-    if (!!data?.ok) {
-      const appId = data?.app_id;
-      const userId = data?.authed_user?.id;
-      const userToken = data?.authed_user?.access_token;
-      const accessToken = data?.access_token;
-      const botUserId = data?.bot_user_id;
-      const teamId = data?.team?.id;
-      const teamName = data?.team?.name;
+    const authedUserToken = data.authed_user?.access_token || "";
 
-      // Handle the successful OAuth flow and redirect the user
-      return NextResponse.redirect(
-        `https://localhost:3000/connections?app_id=${appId}&authed_user_id=${userId}&authed_user_token=${userToken}&slack_access_token=${accessToken}&bot_user_id=${botUserId}&team_id=${teamId}&team_name=${teamName}`
-      );
-    }
+    // Call the server action to save the data to the database
+    await onSlackConnect(
+      data.app_id,
+      data.authed_user.id,
+      authedUserToken,
+      data.access_token,
+      data.bot_user_id,
+      data.team.id,
+      data.team.name,
+      user.id
+    );
+
+    // Perform a clean redirect
+    return NextResponse.redirect(
+      getOAuthRedirectUrl(req, state, { connectionStatus: "slack_success" })
+    );
   } catch (error) {
     console.error(error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.redirect(
+      getOAuthRedirectUrl(req, state, { connectionError: "slack_failed" })
+    );
   }
 }
