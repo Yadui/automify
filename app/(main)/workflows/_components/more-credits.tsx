@@ -13,7 +13,7 @@ export default function MoreCredits() {
   ) : (
     <Card>
       <CardContent className="p-6">
-        <CardDescription>You are out of credits</CardDescription>
+        <CardDescription>You are out of credits. Upgrade or wait for the next cycle before publishing more automation work.</CardDescription>
       </CardContent>
     </Card>
   );

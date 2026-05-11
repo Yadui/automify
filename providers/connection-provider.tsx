@@ -1,79 +1,94 @@
 "use client";
-import { createContext, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
+import { getAllConnections } from "@/app/(main)/connections/_actions/get-connections"; // We'll create this action next
+import type { ConnectorRelationInput, ConnectorSettingsInput } from "@/lib/connectors";
+
+export type NodeConnectionState = {
+  settings?: ConnectorSettingsInput;
+  relations?: ConnectorRelationInput[];
+};
+
+// 1. Define specific types for your connection nodes
+type DiscordNode = NodeConnectionState & {
+  webhookURL: string;
+  content: string;
+  webhookName: string;
+  guildName: string;
+  channelId: string;
+};
+type NotionNode = NodeConnectionState & {
+  accessToken: string;
+  databaseId: string;
+  workspaceName: string;
+  content: string | Record<string, unknown>;
+};
+type SlackNode = NodeConnectionState & {
+  appId: string;
+  authedUserId: string;
+  authedUserToken: string;
+  slackAccessToken: string;
+  botUserId: string;
+  teamId: string;
+  teamName: string;
+  content: string;
+};
+
+type TrelloNode = NodeConnectionState & {
+  apiKey?: string;
+  token?: string;
+  workspaceId?: string;
+};
+type GitHubNode = NodeConnectionState & {
+  accessToken?: string;
+  installationId?: string;
+};
+
+type GoogleNode = Record<string, unknown> & NodeConnectionState;
+type GenericConnectorNode = Record<string, unknown> & NodeConnectionState;
+type WorkflowTemplate = { discord?: string; notion?: string; slack?: string };
 
 export type ConnectionProviderProps = {
-  discordNode: {
-    webhookURL: string;
-    content: string;
-    webhookName: string;
-    guildName: string;
-  };
-  setDiscordNode: React.Dispatch<React.SetStateAction<any>>;
-  googleNode: {}[];
-  setGoogleNode: React.Dispatch<React.SetStateAction<any>>;
-  notionNode: {
-    accessToken: string;
-    databaseId: string;
-    workspaceName: string;
-    content: "";
-  };
-  workflowTemplate: {
-    discord?: string;
-    notion?: string;
-    slack?: string;
-  };
-  setNotionNode: React.Dispatch<React.SetStateAction<any>>;
-  slackNode: {
-    appId: string;
-    authedUserId: string;
-    authedUserToken: string;
-    slackAccessToken: string;
-    botUserId: string;
-    teamId: string;
-    teamName: string;
-    content: string;
-  };
-  setSlackNode: React.Dispatch<React.SetStateAction<any>>;
-  githubNode: {
-    accessToken: string;
-    content: string;
-  };
-  setGithubNode: React.Dispatch<React.SetStateAction<any>>;
-  setWorkFlowTemplate: React.Dispatch<
-    React.SetStateAction<{
-      discord?: string;
-      notion?: string;
-      slack?: string;
-    }>
-  >;
+  discordNode: DiscordNode;
+  setDiscordNode: React.Dispatch<React.SetStateAction<DiscordNode>>;
+  googleNode: GoogleNode;
+  setGoogleNode: React.Dispatch<React.SetStateAction<GoogleNode>>;
+  notionNode: NotionNode;
+  setNotionNode: React.Dispatch<React.SetStateAction<NotionNode>>;
+  slackNode: SlackNode;
+  setSlackNode: React.Dispatch<React.SetStateAction<SlackNode>>;
+  trelloNode: TrelloNode;
+  setTrelloNode: React.Dispatch<React.SetStateAction<TrelloNode>>;
+  githubNode: GitHubNode;
+  setGitHubNode: React.Dispatch<React.SetStateAction<GitHubNode>>;
+  workflowTemplate: WorkflowTemplate;
+  setWorkFlowTemplate: React.Dispatch<React.SetStateAction<WorkflowTemplate>>;
   isLoading: boolean;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  hasLoaded: boolean;
+  loadConnections: () => Promise<void>;
 };
 
-type ConnectionWithChildProps = {
+const ConnectionsContext = createContext<ConnectionProviderProps | null>(null);
+
+export const ConnectionsProvider = ({
+  children,
+}: {
   children: React.ReactNode;
-};
-
-const InitialValues: ConnectionProviderProps = {
-  discordNode: {
+}) => {
+  const [discordNode, setDiscordNode] = useState<DiscordNode>({
     webhookURL: "",
     content: "",
     webhookName: "",
     guildName: "",
-  },
-  googleNode: [],
-  notionNode: {
+    channelId: "",
+  });
+  const [googleNode, setGoogleNode] = useState<GoogleNode>({});
+  const [notionNode, setNotionNode] = useState<NotionNode>({
     accessToken: "",
     databaseId: "",
     workspaceName: "",
     content: "",
-  },
-  workflowTemplate: {
-    discord: "",
-    notion: "",
-    slack: "",
-  },
-  slackNode: {
+  });
+  const [slackNode, setSlackNode] = useState<SlackNode>({
     appId: "",
     authedUserId: "",
     authedUserToken: "",
@@ -82,34 +97,46 @@ const InitialValues: ConnectionProviderProps = {
     teamId: "",
     teamName: "",
     content: "",
-  },
-  isLoading: false,
-  setGoogleNode: () => undefined,
-  setDiscordNode: () => undefined,
-  setNotionNode: () => undefined,
-  setSlackNode: () => undefined,
-  githubNode: {
-    accessToken: "",
-    content: "",
-  },
-  setGithubNode: () => undefined,
-  setIsLoading: () => undefined,
-  setWorkFlowTemplate: () => undefined,
-};
-
-const ConnectionsContext = createContext(InitialValues);
-const { Provider } = ConnectionsContext;
-
-export const ConnectionsProvider = ({ children }: ConnectionWithChildProps) => {
-  const [discordNode, setDiscordNode] = useState(InitialValues.discordNode);
-  const [googleNode, setGoogleNode] = useState(InitialValues.googleNode);
-  const [notionNode, setNotionNode] = useState(InitialValues.notionNode);
-  const [slackNode, setSlackNode] = useState(InitialValues.slackNode);
-  const [githubNode, setGithubNode] = useState(InitialValues.githubNode);
-  const [isLoading, setIsLoading] = useState(InitialValues.isLoading);
-  const [workflowTemplate, setWorkFlowTemplate] = useState(
-    InitialValues.workflowTemplate
+  });
+  const [trelloNode, setTrelloNode] = useState<TrelloNode>({});
+  const [githubNode, setGitHubNode] = useState<GitHubNode>({});
+  const [workflowTemplate, setWorkFlowTemplate] = useState<WorkflowTemplate>(
+    {}
   );
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  const loadConnections = useCallback(async () => {
+    if (isLoading || hasLoaded) return;
+
+    setIsLoading(true);
+    try {
+      const connections = await getAllConnections();
+      const discord = connections.discord as Partial<DiscordNode> & {
+        url?: string;
+        name?: string;
+      };
+      if (connections.discord) {
+        setDiscordNode({
+          webhookURL: discord.webhookURL ?? discord.url ?? "",
+          content: discord.content ?? "",
+          webhookName: discord.webhookName ?? discord.name ?? "",
+          guildName: discord.guildName ?? "",
+          channelId: discord.channelId ?? "",
+        });
+      }
+      if (connections.notion) setNotionNode(connections.notion as NotionNode);
+      if (connections.slack) setSlackNode(connections.slack as SlackNode);
+      if (connections.google) setGoogleNode(connections.google as GoogleNode);
+      if (connections.byType?.Trello) setTrelloNode(connections.byType.Trello as TrelloNode);
+      if (connections.byType?.GitHub) setGitHubNode(connections.byType.GitHub as GitHubNode);
+      setHasLoaded(true);
+    } catch (error) {
+      console.error("Failed to fetch connections", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [hasLoaded, isLoading]);
 
   const values = {
     discordNode,
@@ -120,18 +147,30 @@ export const ConnectionsProvider = ({ children }: ConnectionWithChildProps) => {
     setNotionNode,
     slackNode,
     setSlackNode,
+    trelloNode,
+    setTrelloNode,
     githubNode,
-    setGithubNode,
-    isLoading,
-    setIsLoading,
+    setGitHubNode,
     workflowTemplate,
     setWorkFlowTemplate,
+    isLoading,
+    hasLoaded,
+    loadConnections,
   };
 
-  return <Provider value={values}>{children}</Provider>;
+  return (
+    <ConnectionsContext.Provider value={values}>
+      {children}
+    </ConnectionsContext.Provider>
+  );
 };
 
 export const useNodeConnections = () => {
-  const nodeConnection = useContext(ConnectionsContext);
-  return { nodeConnection };
+  const context = useContext(ConnectionsContext);
+  if (!context) {
+    throw new Error(
+      "useNodeConnections must be used within a ConnectionsProvider"
+    );
+  }
+  return context;
 };

@@ -1,547 +1,475 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useEditor } from "@/providers/editor-provider";
-import { useNodeConnections } from "@/providers/connection-provider";
-import { CONNECTIONS, EditorCanvasDefaultCardTypes } from "@/lib/constant";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import {
-  Settings2,
-  User2,
-  PlayCircle,
-  Eye,
-  Info,
-  ChevronDown,
-  Check,
-  Loader2,
-} from "lucide-react";
-import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
-import RenderConnectionAccordion from "./render-connection-accordion";
-import RenderOutputAccordion from "./render-output-accordian";
-import clsx from "clsx";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useFuzzieStore } from "@/store";
-import { fetchBotSlackChannels, onConnections } from "@/lib/editor-utils";
-import { toast } from "sonner";
-import { GoogleDriveWizard } from "./google-drive-wizard";
 
-const APP_EVENTS: Record<string, { label: string; value: string }[]> = {
-  "Google Drive": [
-    { label: "New File", value: "new_file" },
-    { label: "File Updated", value: "file_updated" },
-    { label: "New Folder", value: "new_folder" },
-  ],
-  Slack: [
-    { label: "Send Message", value: "send_message" },
-    { label: "Update Channel", value: "update_channel" },
-  ],
-  Discord: [{ label: "Send Message", value: "send_message" }],
-  Notion: [
-    { label: "Create Database Item", value: "create_item" },
-    { label: "Update Page", value: "update_page" },
-  ],
+import Link from "next/link";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+import React, { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CONNECTIONS, EditorCanvasDefaultCardTypes } from "@/lib/constant";
+import {
+  getConnector,
+  getConnectorSettingsSchema,
+  isConnectorType,
+  type ConnectorSettingsInput,
+  type ConnectorType,
+} from "@/lib/connectors";
+import { EditorCanvasTypes, EditorNodeMetadata, EditorNodeType } from "@/lib/types";
+import { useNodeConnections, type ConnectionProviderProps } from "@/providers/connection-provider";
+import { useEditor } from "@/providers/editor-provider";
+import { fetchBotSlackChannels, onDragStart } from "@/lib/editor-utils";
+import { useFuzzieStore } from "@/store";
+import { onCreateNodesEdges } from "../_actions/workflow-connections";
+import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
+import RenderOutputAccordion from "./render-output-accordian";
+
+type Props = {
+  nodes: EditorNodeType[];
+  onUpdateNodeMetadata: (nodeId: string, metadata: Partial<EditorNodeMetadata>) => void;
 };
 
-import HttpRequestWizard from "./core-primitives/http-request-wizard";
-import WebhookWizard from "./core-primitives/webhook-wizard";
-import WaitWizard from "./core-primitives/wait-wizard";
-import EndWizard from "./core-primitives/end-wizard";
-import ConditionWizard from "./core-primitives/condition-wizard";
-import DataTransformWizard from "./core-primitives/data-transform-wizard";
-import KVStorageWizard from "./core-primitives/kv-storage-wizard";
-import ToastWizard from "./core-primitives/toast-wizard";
-import GmailWizard from "./core-primitives/gmail-wizard";
-import SlackWizard from "./slack-wizard";
-import DiscordWizard from "./discord-wizard";
-import NotionWizard from "./notion-wizard";
-import TriggerWizard from "./core-primitives/trigger-wizard";
+type StatusTone = "ready" | "warning" | "info" | "muted";
 
-const EditorCanvasSidebar = () => {
-  const { state, dispatch } = useEditor();
-  const { nodeConnection } = useNodeConnections();
-  const { googleFile, setSlackChannels, selectedSlackChannels } =
-    useFuzzieStore();
-  const selectedNode = state.editor.selectedNode;
-  const isNodeActive = selectedNode.data.configStatus === "active";
-  const [activeTab, setActiveTab] = useState<string>("configuration");
-  const [selectedEvent, setSelectedEvent] = useState<string>(
-    selectedNode.data.metadata?.event || "",
+type StatusSummary = {
+  label: string;
+  detail: string;
+  tone: StatusTone;
+};
+
+const statusClassName: Record<StatusTone, string> = {
+  ready: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  warning: "border-amber-200 bg-amber-50 text-amber-700",
+  info: "border-sky-200 bg-sky-50 text-sky-700",
+  muted: "border-[#d4d4d4] bg-white text-[#4d4d4d]",
+};
+
+const toRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+const hasValue = (value: unknown) =>
+  value !== undefined && value !== null && value !== "" && (!Array.isArray(value) || value.length > 0);
+
+const getConnectorRecord = (
+  type: ConnectorType,
+  nodeConnection: ConnectionProviderProps
+): Record<string, unknown> => {
+  if (type === "Google Drive" || type === "Gmail" || type === "Google Calendar") {
+    return toRecord(nodeConnection.googleNode);
+  }
+  if (type === "Discord") return toRecord(nodeConnection.discordNode);
+  if (type === "Notion") return toRecord(nodeConnection.notionNode);
+  if (type === "Slack") return toRecord(nodeConnection.slackNode);
+  if (type === "Trello") return toRecord(nodeConnection.trelloNode);
+  if (type === "GitHub") return toRecord(nodeConnection.githubNode);
+  return {};
+};
+
+const getConnectorValues = (
+  type: ConnectorType,
+  nodeConnection: ConnectionProviderProps
+): ConnectorSettingsInput => {
+  const record = getConnectorRecord(type, nodeConnection);
+  const settings = toRecord(record.settings);
+  return { ...record, ...settings };
+};
+
+const getMissingRequiredLabels = (
+  type: ConnectorType,
+  kind: "connection" | "trigger" | "action",
+  settings: ConnectorSettingsInput
+) =>
+  getConnectorSettingsSchema(type, kind)
+    .filter((field) => field.required)
+    .filter((field) => !hasValue(settings[field.key] ?? field.defaultValue))
+    .map((field) => field.label);
+
+const summarizeList = (items: string[]) => {
+  if (items.length === 0) return "";
+  const preview = items.slice(0, 2).join(", ");
+  return items.length > 2 ? `${preview}, +${items.length - 2} more` : preview;
+};
+
+const getScopeText = (settings: ConnectorSettingsInput) => {
+  if (typeof settings.scope === "string") return settings.scope;
+  if (typeof settings.scopes === "string") return settings.scopes;
+  if (Array.isArray(settings.scopes)) return settings.scopes.join(" ");
+  return "";
+};
+
+const getNodeOperationKind = (node: EditorNodeType) => {
+  const defaultType = EditorCanvasDefaultCardTypes[node.type]?.type;
+  return defaultType === "Trigger" ? "trigger" : "action";
+};
+
+const getAccountStatus = (
+  title: string,
+  nodeConnection: ConnectionProviderProps
+): StatusSummary => {
+  if (!isConnectorType(title)) {
+    return {
+      label: "Not required",
+      detail: "This step does not use a connected app account.",
+      tone: "muted",
+    };
+  }
+
+  if (nodeConnection.isLoading) {
+    return {
+      label: "Checking",
+      detail: "Loading connected accounts for this workspace.",
+      tone: "info",
+    };
+  }
+
+  if (!nodeConnection.hasLoaded) {
+    return {
+      label: "Not checked",
+      detail: "Open Configure to check the connected account.",
+      tone: "muted",
+    };
+  }
+
+  const values = getConnectorValues(title, nodeConnection);
+  const missing = getMissingRequiredLabels(title, "connection", values);
+
+  if (missing.length > 0) {
+    return {
+      label: "Needs account",
+      detail: `Missing ${summarizeList(missing)}.`,
+      tone: "warning",
+    };
+  }
+
+  const connector = getConnector(title);
+  const missingScopes = (connector.requiredCredentialScopes ?? []).filter(
+    (scope) => !getScopeText(values).includes(scope)
   );
 
-  useEffect(() => {
-    if (isNodeActive) {
-      setActiveTab("testing");
-    } else {
-      setActiveTab("configuration");
+  if (missingScopes.length > 0) {
+    return {
+      label: "Needs scope",
+      detail: `Reconnect ${connector.sharedCredentialType ?? title} with ${title} permissions.`,
+      tone: "warning",
+    };
+  }
+
+  return {
+    label: "Connected",
+    detail: `${title} credentials are available for this node.`,
+    tone: "ready",
+  };
+};
+
+const getActionStatus = (
+  node: EditorNodeType | null,
+  hasConnectionsLoaded: boolean,
+  accountStatus: StatusSummary
+): StatusSummary => {
+  if (!node) {
+    return {
+      label: "No node",
+      detail: "Select a node to configure its account and action.",
+      tone: "muted",
+    };
+  }
+
+  const title = node.data.title;
+  if (!isConnectorType(title)) {
+    return {
+      label: "Draft",
+      detail: "Use app-specific nodes for runnable workflow steps.",
+      tone: "muted",
+    };
+  }
+
+  const operationKind = getNodeOperationKind(node);
+  const values = node.data.metadata.settings ?? {};
+  const missing = getMissingRequiredLabels(title, operationKind, values);
+
+  if (missing.length > 0) {
+    return {
+      label: "Needs setup",
+      detail: `Missing ${summarizeList(missing)}.`,
+      tone: "warning",
+    };
+  }
+
+  if (!hasConnectionsLoaded) {
+    return {
+      label: "Not checked",
+      detail: "Open Configure to check the connected account.",
+      tone: "muted",
+    };
+  }
+
+  if (accountStatus.tone !== "ready") {
+    return {
+      label: "Waiting account",
+      detail: "Step settings are complete; connect the account to run it.",
+      tone: "info",
+    };
+  }
+
+  return {
+    label: "Ready",
+    detail: "Required action settings are complete.",
+    tone: "ready",
+  };
+};
+
+const StatusBadge = ({ status }: { status: StatusSummary }) => (
+  <Badge variant="secondary" className={`rounded-sm border ${statusClassName[status.tone]}`}>
+    {status.label}
+  </Badge>
+);
+
+const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
+  const { state } = useEditor();
+  const nodeConnection = useNodeConnections();
+  const { loadConnections } = nodeConnection;
+  const { setSlackChannels } = useFuzzieStore();
+  const params = useParams<{ editorId: string }>();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(requestedTab === "configure" ? "configure" : "add");
+  const [isStartingConnection, setIsStartingConnection] = useState(false);
+
+  const selectedNode = state.editor.selectedNode.id ? state.editor.selectedNode : null;
+  const selectedTitle = selectedNode?.data.title ?? "No node selected";
+  const selectedDescription = selectedNode?.data.description || "Select a workflow node to view its setup status.";
+  const selectedType = selectedNode ? getNodeOperationKind(selectedNode) : null;
+  const accountStatus = getAccountStatus(selectedTitle, nodeConnection);
+  const actionStatus = getActionStatus(selectedNode, nodeConnection.hasLoaded, accountStatus);
+  const selectedConnection = isConnectorType(selectedTitle)
+    ? CONNECTIONS.find((connection) => connection.title === selectedTitle)
+    : null;
+  const selectedConnector = isConnectorType(selectedTitle) ? getConnector(selectedTitle) : null;
+  const selectedConnectionHref = useMemo(() => {
+    if (!selectedNode || !selectedConnector?.oauth) return "/connections";
+
+    const returnParams = new URLSearchParams({
+      selectedNode: selectedNode.id,
+      tab: "configure",
+    });
+    const authParams = new URLSearchParams({
+      type: selectedConnector.type,
+      returnTo: `${pathname}?${returnParams.toString()}`,
+    });
+
+    return `/api/auth/connect?${authParams.toString()}`;
+  }, [pathname, selectedConnector, selectedNode]);
+  const selectedConnectionLabel = selectedConnector?.oauth
+    ? accountStatus.tone === "ready"
+      ? `Reconnect ${selectedTitle}`
+      : `Connect ${selectedTitle}`
+    : "Manage connection";
+  const canConfigureAction = Boolean(selectedNode && isConnectorType(selectedTitle));
+
+  const availableCards = useMemo(() => {
+    const hasTrigger = nodes.some((node) => getNodeOperationKind(node) === "trigger");
+
+    return Object.entries(EditorCanvasDefaultCardTypes).filter(([cardKey, cardType]) => {
+      if (cardKey === "Trigger" || cardKey === "Action") return false;
+      return hasTrigger ? cardType.type === "Action" : cardType.type === "Trigger";
+    });
+  }, [nodes]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === "configure") {
+      void loadConnections();
     }
-    // Re-initialize event from metadata when node changes
-    setSelectedEvent(selectedNode.data.metadata?.event || "");
-  }, [selectedNode.id, isNodeActive]);
+  };
 
-  // Track which node we've already fetched connections for
-  const lastFetchedNodeId = React.useRef<string | null>(null);
+  const handleConnectionLinkClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!selectedConnector?.oauth) return;
 
-  useEffect(() => {
-    // Only fetch connections when the selected node actually changes
-    if (selectedNode.id && selectedNode.id !== lastFetchedNodeId.current) {
-      lastFetchedNodeId.current = selectedNode.id;
-      onConnections(nodeConnection, state, googleFile);
-    }
-  }, [selectedNode.id]);
+    event.preventDefault();
+    setIsStartingConnection(true);
 
-  useEffect(() => {
-    if (nodeConnection.slackNode.slackAccessToken) {
-      fetchBotSlackChannels(
-        nodeConnection.slackNode.slackAccessToken,
-        setSlackChannels,
+    try {
+      const connectedTargets = new Set(state.editor.edges.map((edge) => edge.target));
+      const flowPath = state.editor.elements
+        .filter((node) => connectedTargets.has(node.id))
+        .map((node) => node.type);
+
+      await onCreateNodesEdges(
+        params.editorId,
+        JSON.stringify(state.editor.elements),
+        JSON.stringify(state.editor.edges),
+        JSON.stringify(flowPath)
       );
+
+      window.location.assign(selectedConnectionHref);
+    } catch (error) {
+      console.error("Unable to save workflow before starting connector auth", error);
+      setIsStartingConnection(false);
     }
-  }, [nodeConnection, setSlackChannels]);
+  };
 
-  if (!selectedNode.id) return null;
+  useEffect(() => {
+    if (requestedTab !== "configure") return;
+    setActiveTab("configure");
+    void loadConnections();
+  }, [loadConnections, requestedTab]);
 
-  const events = APP_EVENTS[selectedNode.data.type] || [];
+  useEffect(() => {
+    const slackAccessToken = nodeConnection.slackNode.slackAccessToken;
 
-  // Helper to render wizard in the sidebar container
-  const renderWizardInSidebar = (WizardComponent: React.ComponentType) => (
-    <aside className="flex flex-col h-full bg-background border-l border-l-muted/50 w-full overflow-hidden">
-      <div className="p-6 pb-2 bg-card">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <EditorCanvasIconHelper type={selectedNode.data.type} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">{selectedNode.data.title}</h2>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
-              Step Detail • {selectedNode.id.slice(0, 8)}
-            </p>
-          </div>
-          <Badge variant="outline" className="ml-auto">
-            {selectedNode.data.configStatus || "Draft"}
-          </Badge>
-        </div>
-      </div>
-      <Tabs defaultValue="settings" className="flex-1 flex flex-col min-h-0">
-        <div className="px-6 py-2 border-b bg-card">
-          <TabsList className="w-full justify-start h-9 p-0.5 bg-muted/50">
-            <TabsTrigger value="settings" className="flex-1 text-xs">
-              Settings
-            </TabsTrigger>
-            <TabsTrigger value="json" className="flex-1 text-xs">
-              JSON
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent
-          value="settings"
-          className="flex-1 overflow-auto m-0 p-0 animate-in fade-in"
-        >
-          <WizardComponent />
-        </TabsContent>
-        <TabsContent
-          value="json"
-          className="flex-1 overflow-auto m-0 p-4 animate-in fade-in"
-        >
-          <div className="rounded-md bg-muted p-4">
-            <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
-              {JSON.stringify(selectedNode.data, null, 2)}
-            </pre>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </aside>
-  );
-
-  if (selectedNode.data.type === "Google Drive") {
-    return renderWizardInSidebar(GoogleDriveWizard);
-  }
-  if (selectedNode.data.type === "Email") {
-    return renderWizardInSidebar(GmailWizard);
-  }
-  if (selectedNode.data.type === "HTTP Request") {
-    return renderWizardInSidebar(HttpRequestWizard);
-  }
-  if (selectedNode.data.type === "Webhook") {
-    return renderWizardInSidebar(WebhookWizard);
-  }
-  if (selectedNode.data.type === "Wait") {
-    return renderWizardInSidebar(WaitWizard);
-  }
-  if (selectedNode.data.type === "End") {
-    return renderWizardInSidebar(EndWizard);
-  }
-  if (selectedNode.data.type === "Condition") {
-    return renderWizardInSidebar(ConditionWizard);
-  }
-  if (selectedNode.data.type === "Data Transform") {
-    return renderWizardInSidebar(DataTransformWizard);
-  }
-  if (selectedNode.data.type === "Key-Value Storage") {
-    return renderWizardInSidebar(KVStorageWizard);
-  }
-  if (selectedNode.data.type === "Toast Message") {
-    return renderWizardInSidebar(ToastWizard);
-  }
-  if (selectedNode.data.type === "Slack") {
-    return renderWizardInSidebar(SlackWizard);
-  }
-  if (selectedNode.data.type === "Discord") {
-    return renderWizardInSidebar(DiscordWizard);
-  }
-  if (selectedNode.data.type === "Notion") {
-    return renderWizardInSidebar(NotionWizard);
-  }
-  if (selectedNode.data.type === "Trigger") {
-    return renderWizardInSidebar(TriggerWizard);
-  }
+    if (slackAccessToken) {
+      fetchBotSlackChannels(slackAccessToken, setSlackChannels);
+    }
+  }, [nodeConnection.slackNode.slackAccessToken, setSlackChannels]);
 
   return (
-    <aside className="flex flex-col h-full bg-background border-l border-l-muted/50 w-full overflow-hidden">
-      {/* Header */}
-      <div className="p-6 pb-2 bg-card">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <EditorCanvasIconHelper type={selectedNode.data.type} />
+    <aside className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">
+      <div className="border-b border-[#e5e5e5] p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#e5e5e5] bg-[#fafafa] text-[#171717]">
+            {selectedNode ? (
+              <EditorCanvasIconHelper type={selectedNode.type} />
+            ) : (
+              <span className="text-sm font-semibold">-</span>
+            )}
           </div>
-          <div>
-            <h2 className="text-xl font-bold">{selectedNode.data.title}</h2>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
-              Step Detail • {selectedNode.id.slice(0, 8)}
-            </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="truncate text-sm font-semibold text-[#171717]">{selectedTitle}</h2>
+              {selectedType && (
+                <Badge variant="secondary" className="rounded-sm border border-[#d4d4d4] bg-white text-[#4d4d4d]">
+                  {selectedType}
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#666666]">{selectedDescription}</p>
           </div>
-          <Badge variant="outline" className="ml-auto">
-            {selectedNode.data.configStatus || "Draft"}
-          </Badge>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-md border border-[#e5e5e5] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-[#666666]">Account</span>
+              <StatusBadge status={accountStatus} />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-[#666666]">{accountStatus.detail}</p>
+          </div>
+          <div className="rounded-md border border-[#e5e5e5] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-[#666666]">Action</span>
+              <StatusBadge status={actionStatus} />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-[#666666]">{actionStatus.detail}</p>
+          </div>
         </div>
       </div>
 
-      <Tabs
-        key={selectedNode.id}
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="flex-1 flex flex-col min-h-0"
-      >
-        <div className="px-6 py-2 border-b bg-card">
-          <TabsList className="bg-muted/50 w-full justify-start h-11 p-1">
-            <TabsTrigger
-              value="configuration"
-              className="flex-1 data-[state=active]:bg-background flex items-center justify-center gap-2"
-            >
-              Configuration
-              {isNodeActive && <Check className="w-3 h-3 text-green-500" />}
-            </TabsTrigger>
-            <TabsTrigger
-              value="testing"
-              className="flex-1 data-[state=active]:bg-background flex items-center justify-center gap-2"
-            >
-              Testing
-              {isNodeActive && <Check className="w-3 h-3 text-green-500" />}
-            </TabsTrigger>
-            <TabsTrigger
-              value="json"
-              className="flex-1 data-[state=active]:bg-background flex items-center justify-center gap-2"
-            >
-              JSON
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="flex-1 overflow-y-auto no-scrollbar">
-          <TabsContent
-            value="configuration"
-            className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-right-4"
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex min-h-0 flex-1 flex-col">
+        <TabsList className="grid h-11 grid-cols-2 rounded-none bg-white p-0">
+          <TabsTrigger
+            value="add"
+            className="h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:shadow-none"
           >
-            {/* Event Selection */}
-            <div className="space-y-4">
-              <label className="text-sm font-semibold flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-primary" />
-                1. Choose an Event
-                {selectedEvent && <Check className="w-3 h-3 text-green-500" />}
-              </label>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between h-12 text-left font-normal bg-muted/20"
-                  >
-                    <span
-                      className={clsx(
-                        selectedEvent
-                          ? "text-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {selectedEvent
-                        ? events.find((e) => e.value === selectedEvent)?.label
-                        : "Select an event..."}
-                    </span>
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1">
-                  <div className="space-y-1">
-                    {events.map((event) => (
-                      <div
-                        key={event.value}
-                        className={clsx(
-                          "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-accent transition-colors",
-                          selectedEvent === event.value && "bg-accent",
-                        )}
-                        onClick={() => setSelectedEvent(event.value)}
-                      >
-                        <span className="text-sm">{event.label}</span>
-                        {selectedEvent === event.value && (
-                          <Check className="h-4 w-4 text-primary" />
-                        )}
-                      </div>
-                    ))}
-                    {events.length === 0 && (
-                      <p className="text-xs p-3 text-muted-foreground italic text-center">
-                        No specialized events found for this app.
-                      </p>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Card className="border-primary/10 bg-primary/5">
-                <CardContent className="p-4 flex gap-3">
-                  <Info className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {selectedNode.data.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Account Connection */}
-            <div className="space-y-4">
-              <label className="text-sm font-semibold flex items-center gap-2">
-                <User2 className="w-4 h-4 text-primary" />
-                2. Connect Account
-              </label>
-              <div className="rounded-xl border bg-card/50 overflow-hidden divide-y relative min-h-[100px]">
-                {nodeConnection.isLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-all animate-in fade-in">
-                    <div className="flex flex-col items-center gap-2">
-                      <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                      <p className="text-[10px] text-muted-foreground animate-pulse font-medium">
-                        Checking connection...
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {CONNECTIONS.filter(
-                      (connector) =>
-                        connector.title === selectedNode.data.type ||
-                        (selectedNode.data.type === "Email" &&
-                          connector.title === "Google Drive"),
-                    ).map((connection) => (
-                      <RenderConnectionAccordion
-                        key={connection.title}
-                        state={state}
-                        connection={connection}
-                      />
-                    ))}
-                    {CONNECTIONS.every(
-                      (c) => c.title !== selectedNode.data.type,
-                    ) && (
-                      <div className="p-8 text-center text-muted-foreground text-sm">
-                        This app does not require a specialized account
-                        connection.
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            <Separator className="my-8" />
-
-            <div className="pt-4">
-              <p className="text-[10px] text-muted-foreground text-center mb-4">
-                Once configured, switch to the Testing tab to verify your setup.
-              </p>
-              <Button
-                className="w-full h-11 shadow-lg bg-primary hover:bg-primary/90"
-                onClick={() => {
-                  const testingTab = document.querySelector(
-                    '[value="testing"]',
-                  ) as HTMLElement;
-                  testingTab?.click();
-                }}
+            Add step
+          </TabsTrigger>
+          <TabsTrigger
+            value="configure"
+            className="h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:shadow-none"
+          >
+            Configure
+          </TabsTrigger>
+        </TabsList>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="add" className="m-0 flex flex-col gap-3 p-4">
+            {availableCards.map(([cardKey, cardValue]) => (
+              <Card
+                key={cardKey}
+                draggable
+                className="w-full cursor-grab border-[#e5e5e5] bg-white transition-colors hover:border-[#bdbdbd]"
+                onDragStart={(event) => onDragStart(event, cardKey as EditorCanvasTypes)}
               >
-                Continue to Testing
-              </Button>
-            </div>
+                <CardHeader className="flex flex-row items-center gap-3 p-4">
+                  <EditorCanvasIconHelper type={cardKey as EditorCanvasTypes} />
+                  <div className="min-w-0">
+                    <CardTitle className="text-sm font-semibold text-[#171717]">{cardKey}</CardTitle>
+                    <CardDescription className="mt-1 text-xs leading-5">{cardValue.description}</CardDescription>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
           </TabsContent>
 
-          <TabsContent
-            value="testing"
-            className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-right-4"
-          >
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <label className="text-sm font-semibold flex items-center gap-2">
-                  <PlayCircle className="w-4 h-4 text-primary" />
-                  Configuration & Testing
-                </label>
-
-                <Accordion
-                  type="single"
-                  collapsible
-                  className="w-full border rounded-xl bg-card/50 px-4"
-                >
-                  <AccordionItem value="output" className="border-none">
-                    <AccordionTrigger className="hover:no-underline py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <Eye className="w-4 h-4 text-primary" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-sm font-medium">
-                            Map Output Fields
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Define how data flows from this app
-                          </p>
-                        </div>
+          <TabsContent value="configure" className="m-0 p-4">
+            {!selectedNode ? (
+              <p className="rounded-md border border-dashed border-[#d4d4d4] p-4 text-sm leading-6 text-[#666666]">
+                Select a node on the canvas to configure it.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <section className="rounded-md border border-[#e5e5e5] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#171717]">Account</h3>
+                      <p className="mt-1 text-xs leading-5 text-[#666666]">{accountStatus.detail}</p>
+                    </div>
+                    <StatusBadge status={accountStatus} />
+                  </div>
+                  {nodeConnection.isLoading && (
+                    <p className="mt-3 text-xs text-[#666666]">Loading connected accounts...</p>
+                  )}
+                  {selectedConnection && (
+                    <>
+                      <Separator className="my-4" />
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs leading-5 text-[#666666]">
+                          {selectedConnection.sharedCredentialType
+                            ? `Uses ${selectedConnection.sharedCredentialType} credentials.`
+                            : selectedConnection.description}
+                        </p>
+                        <Link
+                          href={selectedConnectionHref}
+                          onClick={handleConnectionLinkClick}
+                          className="inline-flex h-9 items-center justify-center rounded-md bg-[#171717] px-3 text-sm font-medium text-white transition-colors hover:bg-[#333333]"
+                        >
+                          {isStartingConnection ? "Starting..." : selectedConnectionLabel}
+                        </Link>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-6">
+                    </>
+                  )}
+                </section>
+
+                <section className="rounded-md border border-[#e5e5e5] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#171717]">Action</h3>
+                      <p className="mt-1 text-xs leading-5 text-[#666666]">{actionStatus.detail}</p>
+                    </div>
+                    <StatusBadge status={actionStatus} />
+                  </div>
+                  {canConfigureAction ? (
+                    <div className="mt-4">
                       <RenderOutputAccordion
                         state={state}
                         nodeConnection={nodeConnection}
+                        onUpdateNodeMetadata={onUpdateNodeMetadata}
                       />
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-
-                <div className="p-8 rounded-2xl border-2 border-dashed border-muted flex flex-col items-center justify-center text-center space-y-4 bg-muted/5 relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                  <div className="p-4 rounded-full bg-primary/10 text-primary mb-2">
-                    <PlayCircle className="w-8 h-8" />
-                  </div>
-                  <div className="space-y-1 z-10">
-                    <p className="text-base font-bold">Verify Connection</p>
-                    <p className="text-xs text-muted-foreground max-w-[240px]">
-                      We'll execute this action once with your mapped data to
-                      ensure everything is working perfectly.
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm leading-6 text-[#666666]">
+                      {isConnectorType(selectedTitle)
+                        ? "Open Configure to load this connector's setup fields."
+                        : "This node has no app-specific configuration."}
                     </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    className="px-8 font-semibold shadow-sm hover:translate-y-[-1px] transition-transform"
-                  >
-                    Test Action
-                  </Button>
-                </div>
+                  )}
+                </section>
               </div>
-
-              <div className="pt-8 space-y-4">
-                <Button
-                  className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-base shadow-xl hover:shadow-green-500/20 transition-all"
-                  onClick={() => {
-                    let eventLabel =
-                      events.find((e) => e.value === selectedEvent)?.label ||
-                      "Configured";
-
-                    // Add specific details for exactness
-                    if (selectedNode.data.type === "Slack") {
-                      const channelNames =
-                        selectedSlackChannels
-                          ?.map((c: any) => c.label)
-                          .join(", ") || "";
-                      if (channelNames) {
-                        eventLabel += ` in ${channelNames}`;
-                      }
-                    } else if (selectedNode.data.type === "Discord") {
-                      if (nodeConnection.discordNode.guildName) {
-                        eventLabel += ` to ${nodeConnection.discordNode.guildName}`;
-                      }
-                    } else if (selectedNode.data.type === "Notion") {
-                      if (nodeConnection.notionNode.workspaceName) {
-                        eventLabel += ` in ${nodeConnection.notionNode.workspaceName}`;
-                      }
-                    }
-
-                    dispatch({
-                      type: "UPDATE_NODE",
-                      payload: {
-                        elements: state.editor.elements.map((node) =>
-                          node.id === selectedNode.id
-                            ? {
-                                ...node,
-                                data: {
-                                  ...node.data,
-                                  configStatus: "active",
-                                  metadata: {
-                                    ...node.data.metadata,
-                                    event: selectedEvent,
-                                    eventLabel: eventLabel,
-                                  },
-                                },
-                              }
-                            : node,
-                        ),
-                      },
-                    });
-                    dispatch({
-                      type: "SET_SIDEBAR_VISIBILITY",
-                      payload: { open: false },
-                    });
-                    toast.success(
-                      `${selectedNode.data.title} configured successfully!`,
-                    );
-                  }}
-                >
-                  Save & Finish Configuration
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full text-muted-foreground"
-                  onClick={() => {
-                    dispatch({
-                      type: "SET_SIDEBAR_VISIBILITY",
-                      payload: { open: false },
-                    });
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-          <TabsContent
-            value="json"
-            className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-right-4"
-          >
-            <div className="space-y-4">
-              <label className="text-sm font-semibold flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-primary" />
-                Raw Node Data
-              </label>
-              <div className="rounded-md bg-muted p-4">
-                <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
-                  {JSON.stringify(selectedNode.data, null, 2)}
-                </pre>
-              </div>
-            </div>
+            )}
           </TabsContent>
         </div>
       </Tabs>

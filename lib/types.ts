@@ -1,6 +1,6 @@
-import { ConnectionProviderProps } from "@/providers/connection-provider";
-import { Metadata } from "next";
+import type { ConnectionProviderProps } from "@/providers/connection-provider";
 import { z } from "zod";
+import type { ConnectorRelationInput, ConnectorSettingsInput, ConnectorType } from "./connectors";
 
 export const EditUserProfileSchema = z.object({
   email: z.string().email("Required"),
@@ -9,59 +9,62 @@ export const EditUserProfileSchema = z.object({
 
 export const WorkflowFormSchema = z.object({
   name: z.string().min(1, "Required"),
-  description: z.string().optional(),
+  description: z.string().min(1, "Required"),
 });
 
-export type ConnectionTypes =
-  | "Google Drive"
-  | "Notion"
-  | "Slack"
-  | "Discord"
-  | "GitHub"
-  | "Gmail";
+export type ConnectionTypes = ConnectorType;
 
 export type Connection = {
   title: ConnectionTypes;
   description: string;
   image: string;
-  connectionKey: keyof ConnectionProviderProps;
+  connectionKey?: keyof ConnectionProviderProps;
   accessTokenKey?: string;
   alwaysTrue?: boolean;
   slackSpecial?: boolean;
+  type?: "Trigger" | "Action";
+  sharedCredentialType?: ConnectionTypes;
+  requiredCredentialScopes?: string[];
+  settingsSchema?: ConnectorSettingsInput;
 };
 
 export type EditorCanvasTypes =
   | "Email"
   | "Condition"
   | "AI"
+  | "Discord"
   | "Slack"
+  | "Gmail"
   | "Google Drive"
   | "Notion"
+  | "Trello"
+  | "GitHub"
+  | "Custom Webhook"
   | "Google Calendar"
-  | "Discord"
-  | "HTTP Request"
-  | "Webhook"
-  | "Data Transform"
-  | "Key-Value Storage"
-  | "Toast Message"
-  | "End"
   | "Trigger"
   | "Action"
   | "Wait";
+
+export type EditorNodeMetadata = Record<string, unknown> & {
+  defaultAction?: string;
+  relations?: ConnectorRelationInput[];
+  settings?: ConnectorSettingsInput;
+};
 
 export type EditorCanvasCardType = {
   title: string;
   description: string;
   completed: boolean;
   current: boolean;
-  metadata: any;
+  metadata: EditorNodeMetadata;
   type: EditorCanvasTypes;
-  configStatus?: "draft" | "active" | "error" | "needs_review";
 };
 
 export type EditorNodeType = {
   id: string;
   type: EditorCanvasCardType["type"];
+  selected?: boolean;
+  dragging?: boolean;
   position: {
     x: number;
     y: number;
@@ -81,12 +84,6 @@ export type EditorActions =
           source: string;
           target: string;
         }[];
-        metadata?: {
-          name: string;
-          description: string;
-          publish: boolean;
-          updatedAt: string;
-        };
       };
     }
   | {
@@ -102,69 +99,15 @@ export type EditorActions =
       payload: {
         element: EditorNode;
       };
-    }
-  | {
-      type: "OPEN_ADD_MODAL";
-      payload: {
-        position: { x: number; y: number };
-        edgeId?: string;
-        sourceNodeId?: string;
-      };
-    }
-  | { type: "CLOSE_ADD_MODAL" }
-  | {
-      type: "SET_SIDEBAR_VISIBILITY";
-      payload: {
-        open: boolean;
-      };
-    }
-  | {
-      type: "COPY_NODE";
-      payload: {
-        node: EditorNode;
-      };
-    }
-  | {
-      type: "PASTE_NODE";
-      payload: {
-        position: { x: number; y: number };
-      };
-    }
-  | {
-      type: "DUPLICATE_NODE";
-      payload: {
-        node: EditorNode;
-      };
-    }
-  | {
-      type: "SET_NODE_RUN_STATUS";
-      payload: {
-        nodeId: string;
-        status: "pending" | "running" | "success" | "error";
-      };
-    }
-  | { type: "CLEAR_RUN_STATUS" }
-  | {
-      type: "DELETE_NODE";
-      payload: {
-        nodeId: string;
-      };
-    }
-  | {
-      type: "SET_LAST_RUN_SUCCESS";
-      payload: {
-        success: boolean;
-      };
     };
 
-export const nodeMapper: Record<
-  "Notion" | "Slack" | "Discord" | "Google Drive" | "GitHub" | "Gmail",
-  keyof ConnectionProviderProps
-> = {
+export const nodeMapper: Partial<Record<ConnectionTypes, keyof ConnectionProviderProps>> = {
   Notion: "notionNode",
   Slack: "slackNode",
   Discord: "discordNode",
   "Google Drive": "googleNode",
-  GitHub: "githubNode",
   Gmail: "googleNode",
+  "Google Calendar": "googleNode",
+  Trello: "trelloNode",
+  GitHub: "githubNode",
 };

@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import ModalProvider from "@/providers/modal-provider";
 import { Toaster } from "sonner";
 import { BillingProvider } from "@/providers/billing-provider";
-import { ThemeClientWrapper } from "@/components/theme-client-provider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -19,22 +18,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Automify",
-    template: "%s | Automify",
-  },
-  description:
-    "Automate your workflows with powerful integrations. Connect Google, Discord, Notion, Slack and more.",
-  icons: {
-    icon: [{ url: "/favicon.ico" }, { url: "/favicon.png", type: "image/png" }],
-    apple: "/favicon.png",
-  },
-  openGraph: {
-    title: "Automify",
-    description: "Automate your workflows with powerful integrations",
-    siteName: "Automify",
-    type: "website",
-  },
+  title: "Automify",
+  description: "Build workflow automations across your connected apps.",
 };
 
 export default function RootLayout({
@@ -43,25 +28,41 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
-        <ThemeClientWrapper>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <BillingProvider>
-              <ModalProvider>
-                {children}
-                <Toaster />
-              </ModalProvider>
-            </BillingProvider>
-          </ThemeProvider>
-        </ThemeClientWrapper>
+        {/* The anti-flash script remains here */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+            (function() {
+              try {
+                var theme = localStorage.getItem('theme');
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else if (theme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
+            })();
+          `,
+          }}
+        ></script>
+
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <BillingProvider>
+            <ModalProvider>
+              {children}
+              <Toaster />
+            </ModalProvider>
+          </BillingProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

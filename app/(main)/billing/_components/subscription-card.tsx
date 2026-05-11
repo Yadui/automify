@@ -8,25 +8,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { planPrices, type BillingPlanName } from "@/lib/pricing-plans";
 
 // Define the product type
 interface Product {
   id: string;
-  nickname: "Free" | "Pro" | "Unlimited"; // Using literal types for better type safety
+  nickname: BillingPlanName;
   description?: string;
   credits?: number;
   price?: number;
 }
 
-// Define a specific type for props instead of using any
 interface SubscriptionCardProps {
-  onPayment: (id: string) => void;
+  onPayment: (nickname: BillingPlanName) => void;
+  payingPlan: BillingPlanName | null;
   products: Product[];
   tier: string;
 }
 
 export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   onPayment,
+  payingPlan,
   products,
   tier,
 }) => {
@@ -34,11 +36,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   const getProductDescription = (nickname: Product["nickname"]): string => {
     switch (nickname) {
       case "Unlimited":
-        return "Enjoy a monthly torrent of credits flooding your account, empowering you to tackle even the most ambitious automation tasks effortlessly.";
+        return "Run heavier production automations with unlimited workflow credits.";
       case "Pro":
-        return "Experience a monthly surge of credits to supercharge your automation efforts. Ideal for small to medium-sized projects seeking consistent support.";
+        return "Unlock more monthly credits and support for repeatable multi-app workflows.";
       case "Free":
-        return "Get a monthly wave of credits to automate your tasks with ease. Perfect for starters looking to dip their toes into Fuzzie's automation capabilities.";
+        return "Start with a small monthly credit allowance for testing Automify workflows.";
       default:
         return "";
     }
@@ -59,48 +61,47 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   };
 
   // Helper function to get product price
-  const getProductPrice = (nickname: Product["nickname"]): string => {
-    switch (nickname) {
-      case "Free":
-        return "Free";
-      case "Pro":
-        return "29.99";
-      case "Unlimited":
-        return "99.99";
-      default:
-        return "";
-    }
-  };
+  const getProductPrice = (nickname: Product["nickname"]): string =>
+    planPrices[nickname].monthlyLabel;
 
   return (
-    <section className="flex w-full justify-center md:flex-row flex-col gap-6">
-      {products?.map((product) => (
-        <Card className="p-3" key={product.id}>
-          <CardHeader>
-            <CardTitle>{product.nickname}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5">
-            <CardDescription>
-              {getProductDescription(product.nickname)}
-            </CardDescription>
-            <div className="flex justify-between">
-              <p>{getProductCredits(product.nickname)} credits</p>
-              <p className="font-bold">
-                {getProductPrice(product.nickname)}/mo
-              </p>
-            </div>
-            {product.nickname === tier ? (
-              <Button disabled variant="outline">
-                Active
-              </Button>
-            ) : (
-              <Button onClick={() => onPayment(product.id)} variant="outline">
-                Purchase
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+    <section className="grid w-full gap-4 md:grid-cols-3">
+      {products?.map((product) => {
+        const priceLabel = getProductPrice(product.nickname);
+        const isFreePlan = product.nickname === "Free";
+        const isActivePlan = product.nickname === tier;
+        const isLoading = payingPlan === product.nickname;
+
+        return (
+          <Card className="p-6" key={product.id}>
+            <CardHeader className="p-0">
+              <CardTitle>{product.nickname}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-6 p-0 pt-6">
+              <CardDescription className="min-h-28">
+                {getProductDescription(product.nickname)}
+              </CardDescription>
+              <div className="flex justify-between gap-4 rounded-md bg-[#fafafa] p-4 text-sm shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+                <p className="text-[#4d4d4d]">{getProductCredits(product.nickname)} credits</p>
+                <p className="font-semibold text-[#171717]">{priceLabel}</p>
+              </div>
+              {isActivePlan ? (
+                <Button disabled variant="outline">
+                  Active
+                </Button>
+              ) : isFreePlan ? (
+                <Button disabled variant="outline">
+                  Included
+                </Button>
+              ) : (
+                <Button disabled={isLoading} onClick={() => onPayment(product.nickname)} variant="outline">
+                  {isLoading ? "Opening Razorpay" : "Purchase"}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </section>
   );
 };

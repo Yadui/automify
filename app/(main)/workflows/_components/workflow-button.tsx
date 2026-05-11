@@ -3,47 +3,39 @@ import Workflowform from "@/components/forms/workflow-form";
 import CustomModal from "@/components/global/custom-modal";
 import { Button } from "@/components/ui/button";
 import { useBilling } from "@/providers/billing-provider";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { useModal } from "@/providers/modal-provider";
 import { Plus } from "lucide-react";
 import React from "react";
 
-type Props = {
-  size?: "default" | "sm" | "lg" | "icon";
-  children?: React.ReactNode;
-  className?: string; // Accept className for CustomButton styling
-};
-
-export default function WorkflowButton({
-  size = "icon",
-  children,
-  className,
-}: Props) {
+export default function WorkflowButton() {
+  const { setOpen } = useModal();
   const { credits } = useBilling();
-  const [open, setOpen] = React.useState(false);
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.currentTarget.blur();
+    setOpen(
+      <CustomModal
+        title="Create a Workflow Automation"
+        subheading="Workflows help you automate repeatable tasks."
+      >
+        <Workflowform />
+      </CustomModal>
+    );
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size={size} disabled={credits === 0} className={className}>
-          {children ? children : <Plus />}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Create Workflow</DialogTitle>
-          <DialogDescription>
-            Workflows allow you to automate tasks.
-          </DialogDescription>
-        </DialogHeader>
-        <Workflowform onClose={() => setOpen(false)} />
-      </DialogContent>
-    </Dialog>
+    <Button
+      size={"default"}
+      {...(credits !== "0"
+        ? {
+            onClick: handleClick,
+          }
+        : {
+            disabled: true,
+          })}
+    >
+      <Plus />
+      New workflow
+    </Button>
   );
 }

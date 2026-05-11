@@ -1,38 +1,59 @@
 import { google } from "googleapis";
-import { validateRequest } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
+import { getAppUser } from "@/lib/app-auth";
+import { getOAuthProviderCredentials } from "@/lib/oauth-provider-config";
 
-export async function GET() {
-  const { user } = await validateRequest();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getGoogleDriveConnectionError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+  const status = isRecord(error) ? error.status ?? error.code : undefined;
+
+  if (message.includes("invalid_grant")) {
+    return "Google Drive connection expired. Reconnect Google Drive.";
   }
 
-  const connection = await db.connection.findFirst({
-    where: {
-      userId: Number(user.id),
-      provider: "google",
-      status: "active",
-    },
-  });
+  if (message.includes("insufficient") || message.includes("invalid_scope")) {
+    return "Google Drive needs additional permissions. Reconnect Google Drive.";
+  }
 
-  if (!connection) {
-    return NextResponse.json(
-      { message: "Google account not connected" },
-      { status: 400 }
-    );
+  if (status === 401 || status === 403) {
+    return "Google Drive needs to be reconnected.";
+  }
+
+  return null;
+};
+
+export async function GET() {
+  const googleCredentials = getOAuthProviderCredentials("google");
+  if (!googleCredentials) {
+    return NextResponse.json({ message: "Google OAuth is not configured" }, { status: 500 });
   }
 
   const oauth2Client = new google.auth.OAuth2(
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.BASE_URL}/api/oauth/google/callback`
+    googleCredentials.clientId,
+    googleCredentials.clientSecret,
+    process.env.OAUTH2_REDIRECT_URI
   );
 
+  const user = await getAppUser();
+  if (!user) {
+    return NextResponse.json({ message: "User not found" }, { status: 401 });
+  }
+
+  const googleConnection = await db.google.findUnique({
+    where: { userId: user.id },
+  });
+
+  if (!googleConnection?.accessToken) {
+    return NextResponse.json({ message: "Google Drive is not connected" }, { status: 404 });
+  }
+
   oauth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken || undefined,
+    access_token: googleConnection.accessToken,
+    refresh_token: googleConnection.refreshToken || undefined,
   });
 
   const drive = google.drive({
@@ -44,7 +65,7 @@ export async function GET() {
     const response = await drive.files.list();
 
     if (response) {
-      return NextResponse.json(
+      return Response.json(
         {
           message: response.data,
         },
@@ -53,7 +74,7 @@ export async function GET() {
         }
       );
     } else {
-      return NextResponse.json(
+      return Response.json(
         {
           message: "No files found",
         },
@@ -63,14 +84,12 @@ export async function GET() {
       );
     }
   } catch (err) {
-    console.error(err);
-    return NextResponse.json(
-      {
-        message: "Something went wrong",
-      },
-      {
-        status: 500,
-      }
-    );
+    const connectionError = getGoogleDriveConnectionError(err);
+    if (connectionError) {
+      return NextResponse.json({ message: connectionError }, { status: 409 });
+    }
+
+    console.error("Google Drive file list failed", err);
+    return NextResponse.json({ message: "Something went wrong" }, { status: 500 });
   }
 }

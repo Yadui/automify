@@ -1,13 +1,12 @@
 import {
-  LayoutDashboard,
-  Zap,
-  Settings2,
-  Link2,
   CreditCard,
-  FileText,
-  MousePointerClick,
+  LayoutDashboard,
+  PlugZap,
+  Settings2,
+  Workflow,
 } from "lucide-react";
-import { Connection } from "./types";
+import { CONNECTIONS } from "./connectors";
+export { CONNECTIONS };
 
 export const clients = [...new Array(10)].map((client, index) => ({
   href: `/${index + 1}.png`,
@@ -95,15 +94,17 @@ export const products = [
 ];
 
 export const menuOptions = [
-  { name: "Dashboard", Component: LayoutDashboard, href: "/dashboard" },
-  { name: "Workflows", Component: Zap, href: "/workflows" },
-  { name: "Settings", Component: Settings2, href: "/settings" },
-  { name: "Connections", Component: Link2, href: "/connections" },
-  { name: "Billing", Component: CreditCard, href: "/billing" },
+  { name: "Dashboard", Icon: LayoutDashboard, href: "/dashboard" },
+  { name: "Workflows", Icon: Workflow, href: "/workflows" },
+  { name: "Settings", Icon: Settings2, href: "/settings" },
+  { name: "Connections", Icon: PlugZap, href: "/connections" },
+  { name: "Billing", Icon: CreditCard, href: "/billing" },
+  // { name: "Templates", Component: Templates, href: "/templates" },
+  // { name: "Logs", Component: Logs, href: "/logs" },
 ];
 
 export const EditorCanvasDefaultCardTypes = {
-  Email: { description: "Send an email via Gmail", type: "Action" },
+  Email: { description: "Send an email to a user", type: "Action" },
   Condition: {
     description: "Boolean operator that creates different conditions lanes.",
     type: "Action",
@@ -119,7 +120,16 @@ export const EditorCanvasDefaultCardTypes = {
       "Connect with Google drive to trigger actions or to create files and folders.",
     type: "Trigger",
   },
+  Gmail: {
+    description: "Send email or react to matching Gmail messages.",
+    type: "Action",
+  },
   Notion: { description: "Create entries directly in notion.", type: "Action" },
+  "Custom Webhook": {
+    description:
+      "Connect any app that has an API key and send data to your applicaiton.",
+    type: "Action",
+  },
   Discord: {
     description: "Post messages to your discord server",
     type: "Action",
@@ -127,6 +137,14 @@ export const EditorCanvasDefaultCardTypes = {
   "Google Calendar": {
     description: "Create a calendar invite.",
     type: "Action",
+  },
+  Trello: {
+    description: "Create cards or react to board/list/card updates.",
+    type: "Action",
+  },
+  GitHub: {
+    description: "React to issues/PRs or create linked GitHub issues.",
+    type: "Trigger",
   },
   Trigger: {
     description: "An event that starts the workflow.",
@@ -137,79 +155,7 @@ export const EditorCanvasDefaultCardTypes = {
     type: "Action",
   },
   Wait: {
-    description: "Pause workflow for a duration or until a specific time.",
-    type: "Action",
-  },
-  "HTTP Request": {
-    description: "Make an HTTP request to an external API or service.",
-    type: "Action",
-  },
-  Webhook: {
-    description:
-      "Start workflow when HTTP request is received at your unique URL.",
-    type: "Trigger",
-  },
-  "Data Transform": {
-    description: "Modify, format, or restructure data between steps.",
-    type: "Action",
-  },
-  "Key-Value Storage": {
-    description: "Store and retrieve data across workflow executions.",
-    type: "Action",
-  },
-  "Toast Message": {
-    description: "Display a toast message in the browser.",
-    type: "Action",
-  },
-  End: {
-    description: "Explicitly terminate the workflow execution.",
+    description: "Delay the next action step by using the wait timer.",
     type: "Action",
   },
 };
-
-export const CONNECTIONS: Connection[] = [
-  {
-    title: "Google Drive",
-    description: "Connect your google drive to listen to folder changes",
-    image: "/googleDrive.png",
-    connectionKey: "googleNode",
-    alwaysTrue: true,
-  },
-  {
-    title: "Discord",
-    description: "Connect your discord to send notification and messages",
-    image: "/discord.png",
-    connectionKey: "discordNode",
-    accessTokenKey: "webhookURL",
-  },
-  {
-    title: "Notion",
-    description: "Create entries in your notion dashboard and automate tasks.",
-    image: "/notion.png",
-    connectionKey: "notionNode",
-    accessTokenKey: "accessToken",
-  },
-  {
-    title: "Slack",
-    description:
-      "Use slack to send notifications to team members through your own custom bot.",
-    image: "/slack.png",
-    connectionKey: "slackNode",
-    accessTokenKey: "slackAccessToken",
-    slackSpecial: true,
-  },
-  {
-    title: "GitHub",
-    description: "Connect your GitHub to automate repositories and scripts",
-    image: "",
-    connectionKey: "githubNode",
-    accessTokenKey: "accessToken",
-  },
-  {
-    title: "Gmail",
-    description: "Connect your Gmail account to send emails",
-    image: "/gmailLogo.png",
-    connectionKey: "googleNode",
-    alwaysTrue: true,
-  },
-];

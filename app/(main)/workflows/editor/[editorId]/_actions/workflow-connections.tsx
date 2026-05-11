@@ -1,76 +1,59 @@
 "use server";
 
 import db from "@/lib/db";
-import { validateRequest } from "@/lib/auth";
+import { getAppUser } from "@/lib/app-auth";
 
 export const onCreateNodesEdges = async (
   flowId: string,
   nodes: string,
   edges: string,
-  flowPath: string,
+  flowPath: string
 ) => {
-  try {
-    const flow = await db.workflow.update({
-      where: {
-        id: flowId,
-      },
-      data: {
-        nodes,
-        edges,
-        flowPath: flowPath,
-      },
-    });
+  const flow = await db.workflows.update({
+    where: {
+      id: flowId,
+    },
+    data: {
+      nodes,
+      edges,
+      flowPath: flowPath,
+    },
+  });
 
-    if (flow) return { message: "Workflow saved successfully" };
-  } catch (error) {
-    console.error("Error saving workflow:", error);
-    return { error: "Failed to save workflow" };
-  }
+  if (flow) return { message: "flow saved" };
 };
 
 export const onFlowPublish = async (workflowId: string, state: boolean) => {
-  try {
-    const { user: authUser } = await validateRequest();
+  console.log(state);
+  const user = await getAppUser();
 
-    if (!authUser) {
-      return { error: "User not authenticated" };
-    }
-
-    const userId = Number(authUser.id);
-
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { credits: true, tier: true },
-    });
-
-    if (!user) {
-      return { error: "User not found" };
-    }
-
-    // Check credits only if publishing (not unpublishing)
-    // Note: Credits are deducted on workflow execution, not on publish
-    if (state && user.tier !== "Unlimited" && user.credits <= 0) {
-      return {
-        error:
-          "Insufficient credits. Run workflows to earn more or upgrade your plan.",
-      };
-    }
-
-    const published = await db.workflow.update({
-      where: {
-        id: workflowId,
-      },
-      data: {
-        publish: state,
-      },
-    });
-
-    if (published.publish) {
-      return { message: "Workflow published successfully" };
-    }
-    return { message: "Workflow unpublished" };
-  } catch (error) {
-    console.error("Error publishing workflow:", error);
-    return { error: "Failed to update publishing state" };
+  if (!user) {
+    throw new Error("User not authenticated");
   }
+  const dbUser = await db.user.findUnique({
+    where: { clerkId: user.id },
+    select: { credits: true },
+  });
+  const published = await db.workflows.update({
+    where: {
+      id: workflowId,
+    },
+    data: {
+      publish: state,
+    },
+  });
+  if (dbUser === null) {
+    throw new Error("User not found");
+  }
+  if (published.publish) {
+    // Deduct credits only when publishing
+    if (dbUser.credits !== "Unlimited") {
+      await db.user.update({
+        where: { clerkId: user.id },
+        data: { credits: `${parseInt(dbUser.credits!) - 1}` },
+      });
+    }
+    return "Workflow published";
+  }
+  return "Workflow unpublished";
 };

@@ -210,7 +210,7 @@ const MultipleSelector = React.forwardRef<
         setSelected(newOptions);
         onChange?.(newOptions);
       },
-      [selected]
+      [onChange, selected]
     );
 
     const handleKeyDown = React.useCallback(
@@ -228,7 +228,7 @@ const MultipleSelector = React.forwardRef<
           }
         }
       },
-      [selected]
+      [handleUnselect, selected]
     );
 
     useEffect(() => {
@@ -419,7 +419,7 @@ const MultipleSelector = React.forwardRef<
               onFocus={(event) => {
                 setOpen(true);
                 if (triggerSearchOnFocus) {
-                  void onSearch?.(debouncedSearchTerm);
+                  onSearch?.(debouncedSearchTerm);
                 }
                 inputProps?.onFocus?.(event);
               }}

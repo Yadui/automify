@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Bitcount+Grid+Double:wght@100..900&display=swap");
-
 *,
 *::before,
 *::after {
@@ -28,48 +26,64 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 90%;
-    --foreground: 0 0% 3.9%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover-foreground: 0 0% 9%;
     --primary: 0 0% 9%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
+    --secondary: 0 0% 98%;
     --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 93%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 93%;
+    --muted: 0 0% 98%;
+    --muted-foreground: 0 0% 30%;
+    --accent: 210 100% 96%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 80%; /* Darker border to be visible on 90% bg */
-    --input: 0 0% 80%;
-    --ring: 0 0% 3.9%;
+    --border: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 212 100% 48%;
     --radius: 0.5rem;
+    --ds-black: #171717;
+    --ds-gray-600: #4d4d4d;
+    --ds-gray-500: #666666;
+    --ds-gray-400: #808080;
+    --ds-gray-100: #ebebeb;
+    --ds-gray-50: #fafafa;
+    --ds-link: #0072f5;
+    --ds-focus-color: hsla(212, 100%, 48%, 1);
+    --ds-develop: #0a72ef;
+    --ds-preview: #de1d8d;
+    --ds-ship: #ff5b4f;
+    --ds-shadow-border: rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+    --ds-shadow-card: rgba(0, 0, 0, 0.08) 0px 0px 0px 1px,
+      rgba(0, 0, 0, 0.04) 0px 2px 2px,
+      rgba(0, 0, 0, 0.04) 0px 8px 8px -8px,
+      #fafafa 0px 0px 0px 1px;
   }
 
   .dark {
-    --background: 240 10% 10%;
-    --foreground: 0 0% 90%;
-    --card: 240 10% 13%; /* Slightly lighter than 10% bg to elevate */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 13%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 10% 20%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 10% 20%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 10% 20%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 14%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 10% 25%; /* Lighter than card for subtle definition */
-    --input: 240 10% 20%;
-    --ring: 240 4.9% 83.9%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 212 100% 48%;
   }
   .theme {
     --animate-orbit: orbit calc(var(--duration) * 1s) linear infinite;
@@ -80,10 +94,118 @@ body {
 
 @layer base {
   * {
-    border-color: hsl(0, 0%, 80%);
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-geist-sans), Arial, "Apple Color Emoji",
+      "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+    font-feature-settings: "liga" 1;
+    color: var(--ds-black);
+    background: #ffffff;
+  }
+
+  ::selection {
+    background: hsl(0 0% 95%);
+    color: var(--ds-black);
+  }
+}
+
+@layer components {
+  .ds-shadow-border {
+    box-shadow: var(--ds-shadow-border);
+  }
+
+  .ds-card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: var(--ds-shadow-card);
+  }
+
+  .ds-card-soft {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: var(--ds-shadow-border), rgba(0, 0, 0, 0.04) 0px 2px 2px;
+  }
+
+  .ds-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 9999px;
+    background: #ebf5ff;
+    color: #0068d6;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.33;
+  }
+
+  .ds-eyebrow {
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular,
+      Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--ds-gray-500);
+  }
+
+  .ds-display {
+    color: var(--ds-black);
+    font-size: 48px;
+    font-weight: 600;
+    letter-spacing: -2.4px;
+    line-height: 1.08;
+  }
+
+  .ds-section-title {
+    color: var(--ds-black);
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -2.4px;
+    line-height: 1.2;
+  }
+
+  .ds-card-title {
+    color: var(--ds-black);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.96px;
+    line-height: 1.33;
+  }
+
+  .ds-muted {
+    color: var(--ds-gray-600);
+  }
+
+  .ds-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 32px;
+  }
+
+  .ds-page-title {
+    color: var(--ds-black);
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -2.4px;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 768px) {
+  .ds-display {
+    font-size: 40px;
+    letter-spacing: -2.4px;
+  }
+
+  .ds-section-title,
+  .ds-page-title {
+    font-size: 32px;
+    letter-spacing: -1.28px;
   }
 }
 

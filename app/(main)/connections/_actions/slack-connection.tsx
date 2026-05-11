@@ -1,9 +1,22 @@
-"use server";
+"use server"; // Add this to mark it as a Server Component
+
+import type { Prisma } from "@prisma/client";
 import { Option } from "@/components/ui/multiple-select";
 import db from "@/lib/db";
-import { validateRequest } from "@/lib/auth";
+import {
+  connectorSettingsJsonSchema,
+  type ConnectorSettingsInput,
+  type ConnectorType,
+} from "@/lib/connectors";
+import { getAppUser } from "@/lib/app-auth";
 import axios from "axios";
+// import { SomeType } from "@/lib/types"; // Import necessary types
 
+// Define a specific type for the function parameters instead of using any
+// If you need to keep it, add a comment explaining why it's kept
+// interface SlackConnectParams {}
+
+// Update the function to use the defined type
 export const onSlackConnect = async (
   app_id: string,
   authed_user_id: string,
@@ -12,54 +25,67 @@ export const onSlackConnect = async (
   bot_user_id: string,
   team_id: string,
   team_name: string,
-  userId: number
+  user_id: string
 ): Promise<void> => {
+  const connectorType: ConnectorType = "Slack";
+  const settings = connectorSettingsJsonSchema.parse({
+    appId: app_id,
+    authedUserId: authed_user_id,
+    authedUserToken: authed_user_token,
+    slackAccessToken: slack_access_token,
+    botUserId: bot_user_id,
+    teamId: team_id,
+    teamName: team_name,
+  }) satisfies ConnectorSettingsInput;
+  const prismaSettings = settings as Prisma.InputJsonObject;
+
   if (!slack_access_token) return;
 
-  await db.connection.upsert({
-    where: {
-      userId_provider_providerAccountId: {
-        userId,
-        provider: "slack",
-        providerAccountId: team_id,
-      },
-    },
-    update: {
-      accessToken: slack_access_token,
-      metadata: {
-        appId: app_id,
-        authedUserId: authed_user_id,
-        authedUserToken: authed_user_token,
-        botUserId: bot_user_id,
-        teamName: team_name,
-      },
-      status: "active",
-    },
-    create: {
-      userId,
-      provider: "slack",
-      providerAccountId: team_id,
-      accessToken: slack_access_token,
-      metadata: {
-        appId: app_id,
-        authedUserId: authed_user_id,
-        authedUserToken: authed_user_token,
-        botUserId: bot_user_id,
-        teamName: team_name,
-      },
-      status: "active",
-    },
+  const slackConnection = await db.slack.findFirst({
+    where: { slackAccessToken: slack_access_token },
+    include: { connections: true },
   });
+
+  if (!slackConnection) {
+    await db.slack.create({
+      data: {
+        userId: user_id,
+        appId: app_id,
+        authedUserId: authed_user_id,
+        authedUserToken: authed_user_token,
+        slackAccessToken: slack_access_token,
+        botUserId: bot_user_id,
+        teamId: team_id,
+        teamName: team_name,
+        connections: {
+          create: { userId: user_id, type: connectorType, settings: prismaSettings },
+        },
+      },
+    });
+  } else {
+    await db.connections.upsert({
+      where: {
+        userId_type: {
+          userId: user_id,
+          type: connectorType,
+        },
+      },
+      create: {
+        userId: user_id,
+        type: connectorType,
+        slackId: slackConnection.id,
+        settings: prismaSettings,
+      },
+      update: { settings: prismaSettings, slackId: slackConnection.id },
+    });
+  }
 };
 
 export const getSlackConnection = async () => {
-  const { user } = await validateRequest();
+  const user = await getAppUser();
   if (user) {
-    return await db.connection.findFirst({
-      where: {
-        userId: Number(user.id),
-        provider: "slack",
-      },
+    return await db.slack.findFirst({
+      where: { userId: user.id },
     });
   }
   return null;
@@ -82,7 +108,10 @@ export async function listBotChannels(
       headers: { Authorization: `Bearer ${slackAccessToken}` },
     });
 
+    console.log(data);
+
     if (!data.ok) throw new Error(data.error);
+
     if (!data?.channels?.length) return [];
 
     return data.channels
@@ -92,7 +121,7 @@ export async function listBotChannels(
         value: ch.id,
       }));
   } catch (error) {
-    console.error("Error listing bot channels:", error);
+    console.error("Error listing bot channels:");
     throw error;
   }
 }
@@ -113,6 +142,7 @@ const postMessageInSlackChannel = async (
         },
       }
     );
+    console.log(`Message posted successfully to channel ID: ${slackChannel}`);
   } catch (error) {
     console.error(
       `Error posting message to Slack channel ${slackChannel}:`,
@@ -121,6 +151,7 @@ const postMessageInSlackChannel = async (
   }
 };
 
+// Wrapper function to post messages to multiple Slack channels
 export const postMessageToSlack = async (
   slackAccessToken: string,
   selectedSlackChannels: Option[],
@@ -131,17 +162,14 @@ export const postMessageToSlack = async (
     return { message: "Channel not selected" };
 
   try {
-    const promises = selectedSlackChannels
+    selectedSlackChannels
       .map((channel) => channel?.value)
-      .filter((val): val is string => !!val)
-      .map((channelId) =>
-        postMessageInSlackChannel(slackAccessToken, channelId, content)
-      );
-
-    await Promise.all(promises);
-    return { message: "Success" };
+      .forEach((channel) => {
+        postMessageInSlackChannel(slackAccessToken, channel, content);
+      });
   } catch (error) {
     console.error("Error posting message to Slack channel:", error);
-    return { message: "Failed to post messages" };
   }
+
+  return { message: "Success" };
 };

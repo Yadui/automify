@@ -18,8 +18,11 @@ import { Button } from "../ui/button";
 import { Loader2 } from "lucide-react";
 
 type Props = {
-  user: any;
-  onUpdate: any;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  onUpdate?: (name: string) => unknown | Promise<unknown>;
 };
 
 const ProfileForm = ({ user, onUpdate }: Props) => {
@@ -33,11 +36,6 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
       email: user?.email || "",
     },
   });
-
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    // ... existing code ...
-  };
 
   const handleSubmit = async (
     values: z.infer<typeof EditUserProfileSchema>
@@ -72,7 +70,7 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-lg">User full name</FormLabel>
+              <FormLabel className="text-sm font-medium text-[#171717]">User full name</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="Name" disabled={isLoading} />
               </FormControl>
@@ -85,7 +83,7 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-lg">Email</FormLabel>
+              <FormLabel className="text-sm font-medium text-[#171717]">Email</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -100,7 +98,7 @@ const ProfileForm = ({ user, onUpdate }: Props) => {
         />
         <Button
           type="submit"
-          className="self-start hover:bg-[#2F006B] hover:text-white"
+          className="self-start"
           disabled={isLoading} // Disable button while loading
         >
           {isLoading ? (

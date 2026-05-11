@@ -1,59 +1,35 @@
-"use client";
 import InfoBar from "@/components/infobar";
 import Sidebar from "@/components/sidebar";
-import SupportChatbot from "@/components/global/support-chatbot";
-import { MobileNav } from "@/components/global/mobile-nav";
-import { usePathname } from "next/navigation";
-import React, { useEffect, useState } from "react";
-import { getUserInfo } from "./_actions/user-info";
+import { BillingProvider } from "@/providers/billing-provider";
+import { getAppUser } from "@/lib/app-auth";
+import db from "@/lib/db";
+import { redirect } from "next/navigation";
+import React from "react";
 
 type Props = { children: React.ReactNode };
 
-type UserInfo = {
-  name: string | null;
-  email: string;
-  profileImage: string | null;
-};
+const Layout = async (props: Props) => {
+  const appUser = await getAppUser();
 
-const Layout = (props: Props) => {
-  const pathname = usePathname();
-  const isEditor = pathname.includes("/editor/");
-  const [user, setUser] = useState<UserInfo | null>(null);
+  if (!appUser) redirect("/sign-in");
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const response = await getUserInfo();
-      if (response) {
-        setUser({
-          name: response.name || null,
-          email: response.email || "",
-          profileImage: response.profileImage || null,
-        });
-      }
-    };
-    fetchUser();
-  }, []);
+  const billing = await db.user.findUnique({
+    where: { clerkId: appUser.id },
+    select: { credits: true, tier: true },
+  });
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* Full-width InfoBar at the top */}
-      {!isEditor && <InfoBar />}
-
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar user={user || undefined} />
-        <main
-          className={
-            isEditor
-              ? "flex-1 overflow-hidden lg:ml-28"
-              : "flex-1 overflow-auto lg:ml-28 p-4 lg:p-0"
-          }
-        >
-          {props.children}
-        </main>
-        <SupportChatbot />
-        <MobileNav />
+    <BillingProvider initialCredits={billing?.credits} initialTier={billing?.tier}>
+      <div className="flex h-screen overflow-hidden bg-white text-[#171717]">
+        <Sidebar />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <InfoBar authSource={appUser.source} userEmail={appUser.email} userName={appUser.name} />
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-8">
+            {props.children}
+          </main>
+        </div>
       </div>
-    </div>
+    </BillingProvider>
   );
 };
 

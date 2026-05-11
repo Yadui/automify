@@ -1,43 +1,39 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import axios from "axios";
-import { getGoogleListener } from "../../../_actions/workflow-connections";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
 import { CardContainer } from "@/components/global/3d-card";
 
-// Define specific properties for the interface
+// Corrected interface: This component takes an initial state, not a fileId.
 interface GoogleDriveFilesProps {
-  fileId: string; // Example property
-  // Add other properties as needed
+  initialIsListening: boolean;
 }
 
-const GoogleDriveFiles: React.FC<GoogleDriveFilesProps> = (props) => {
+const GoogleDriveFiles: React.FC<GoogleDriveFilesProps> = ({
+  initialIsListening,
+}) => {
   const [loading, setLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-
+  // The component's state is initialized with the prop from the server.
+  const [isListening, setIsListening] = useState(initialIsListening);
   const reqGoogle = async () => {
     setLoading(true);
-    const response = await axios.get("/api/drive-activity");
-    if (response) {
-      toast.message(response.data);
+    try {
+      const response = await axios.get("/api/drive-activity");
+      if (response.data?.message) {
+        toast.message(response.data.message);
+        setIsListening(true);
+      }
+    } catch (error) {
+      toast.error("Failed to start listener.");
+      console.error(error);
+    } finally {
       setLoading(false);
-      setIsListening(true);
-    }
-    setIsListening(false);
-  };
-
-  const onListener = async () => {
-    const listener = await getGoogleListener();
-    if (listener?.googleResourceId !== null) {
-      setIsListening(true);
     }
   };
 
-  useEffect(() => {
-    onListener();
-  }, []);
+  // With the initial state passed as a prop, the useEffect hook is no longer needed.
 
   return (
     <div className="flex flex-col gap-3 pb-6">
@@ -48,14 +44,9 @@ const GoogleDriveFiles: React.FC<GoogleDriveFilesProps> = (props) => {
           </CardContainer>
         </Card>
       ) : (
-        <Button
-          variant="outline"
-          {...(!loading && {
-            onClick: reqGoogle,
-          })}
-        >
+        <Button variant="outline" disabled={loading} onClick={reqGoogle}>
           {loading ? (
-            <div className="absolute flex h-full w-full items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center">
               <svg
                 aria-hidden="true"
                 className="inline h-8 w-8 animate-spin fill-blue-600 text-gray-200 dark:text-gray-600"
@@ -63,6 +54,7 @@ const GoogleDriveFiles: React.FC<GoogleDriveFilesProps> = (props) => {
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
+                {/* SVG paths for spinner */}
                 <path
                   d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
                   fill="currentColor"

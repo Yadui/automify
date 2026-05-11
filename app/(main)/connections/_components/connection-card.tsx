@@ -1,177 +1,64 @@
-"use client";
+// app/(main)/connections/_components/connection-card.tsx
 import React from "react";
+import Link from "next/link";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Github, Loader2 } from "lucide-react";
+import { type ConnectorType } from "@/lib/connectors";
+import ConnectorLogo from "@/components/global/connector-logo";
 
 interface ConnectionCardProps {
   description: string;
   title: string;
-  icon: string;
-  type: string;
+  type: ConnectorType;
   connected: { [key: string]: boolean };
-  connectedId?: string;
-  returnUrl?: string;
-  isConnecting?: boolean;
-  isLocked?: boolean;
-  onConnect?: () => void;
 }
 
 const ConnectionCard: React.FC<ConnectionCardProps> = ({
   description,
   title,
-  icon,
   type,
   connected,
-  connectedId,
-  returnUrl,
-  isConnecting = false,
-  isLocked = false,
-  onConnect,
 }) => {
-  const isGitHub = title === "GitHub";
-
-  // Helper to build OAuth URL with optional returnUrl
-  const getOAuthUrl = (provider: string): string => {
-    let base = "";
-    switch (provider) {
-      case "Discord":
-        base = "/api/oauth/discord/start";
-        break;
-      case "Notion":
-        base = "/api/oauth/notion/start";
-        break;
-      case "Slack":
-        base = "/api/oauth/slack/start";
-        break;
-      case "Google Drive":
-      case "Gmail":
-        base = "/api/oauth/google/start";
-        break;
-      case "GitHub":
-        base = "/api/auth/github/start";
-        break;
-      default:
-        return "#";
-    }
-    if (returnUrl) {
-      return `${base}?returnUrl=${encodeURIComponent(returnUrl)}`;
-    }
-    return base;
-  };
-
-  const [isDisconnecting, setIsDisconnecting] = React.useState(false);
-
-  const handleConnect = () => {
-    if (onConnect) {
-      onConnect();
-    }
-    // Small delay to allow state update to render loader before navigation
-    setTimeout(() => {
-      window.location.href = getOAuthUrl(title);
-    }, 100);
-  };
-
-  const handleDisconnect = async () => {
-    const { disconnectConnection } =
-      await import("../_actions/connection-actions");
-    setIsDisconnecting(true);
-    try {
-      await disconnectConnection(title);
-    } catch (error) {
-      console.error("Failed to disconnect:", error);
-    } finally {
-      setIsDisconnecting(false);
-    }
-  };
+  const authUrl = `/api/auth/connect?${new URLSearchParams({
+    type,
+    returnTo: "/connections",
+  }).toString()}`;
 
   return (
-    <Card className="flex w-full items-center justify-between">
-      <CardHeader className="flex flex-col gap-4">
-        <div className="flex flex-row gap-2">
-          {isGitHub ? (
-            <Github className="h-[30px] w-[30px] flex-shrink-0" />
-          ) : (
-            <Image
-              src={icon}
-              alt={title}
-              height={30}
-              width={30}
-              className="object-contain"
-            />
-          )}
+    <Card className="flex w-full flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center">
+      <CardHeader className="flex flex-row items-center gap-4 p-0">
+        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
+          <ConnectorLogo type={type} title={title} size={28} />
         </div>
         <div>
-          <CardTitle className="text-lg">{title}</CardTitle>
+          <CardTitle className="text-lg tracking-[-0.32px]">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
-        {connected[type] && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-0.5 bg-green-500/10 text-green-500 rounded-full font-medium uppercase tracking-wide">
-                Active
-              </span>
-              {connectedId && (
-                <span className="text-xs font-medium text-muted-foreground truncate max-w-[200px]">
-                  {connectedId}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </CardHeader>
-      <div className="flex flex-col items-end gap-2 p-4">
+      <div className="flex flex-col items-start gap-2 sm:items-end">
         {connected[type] ? (
-          <div className="flex flex-col gap-2 w-full">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDisconnect}
-              disabled={isLocked || isConnecting || isDisconnecting}
-              className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 font-semibold h-8 px-3 border border-border/50 justify-center w-full"
+          <div className="flex items-center gap-2">
+            <div className="ds-pill">
+              Connected
+            </div>
+            <Link
+              href={authUrl}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-white px-4 text-sm font-medium text-[#171717] shadow-[rgb(235,235,235)_0px_0px_0px_1px] transition-colors hover:bg-[#fafafa]"
             >
-              {isDisconnecting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Disconnect"
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={handleConnect}
-              disabled={isLocked || isConnecting || isDisconnecting}
-              size="sm"
-              className="font-bold h-8 px-3 text-muted-foreground hover:text-primary border border-border/50 justify-center w-full"
-            >
-              {isConnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Refreshing
-                </>
-              ) : (
-                "Refresh"
-              )}
-            </Button>
+              Reconnect
+            </Link>
           </div>
         ) : (
-          <Button
-            onClick={handleConnect}
-            disabled={isLocked || isConnecting}
-            className="font-bold"
+          <Link
+            href={authUrl}
+            className="inline-flex h-10 items-center justify-center rounded-md bg-[#171717] px-4 text-sm font-medium text-white shadow-[rgba(0,0,0,0.08)_0px_0px_0px_1px] transition-colors hover:bg-black"
           >
-            {isConnecting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Connecting
-              </>
-            ) : (
-              "Connect"
-            )}
-          </Button>
+            Connect
+          </Link>
         )}
       </div>
     </Card>

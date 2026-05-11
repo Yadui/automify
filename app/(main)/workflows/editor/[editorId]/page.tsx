@@ -1,44 +1,50 @@
 import { ConnectionsProvider } from "@/providers/connection-provider";
 import EditorProvider from "@/providers/editor-provider";
+import type { EditorNodeType } from "@/lib/types";
 import React from "react";
-import EditorHeader from "./_components/editor-header";
 import EditorCanvas from "./_components/editor-canvas";
-import {
-  onGetNodesEdges,
-  onGetWorkflow,
-} from "@/app/(main)/workflows/_actions/workflow-connections";
-import ErrorBoundary from "@/components/error-boundary";
+import { onGetNodesEdges } from "../../_actions/workflow-connections";
 
-type Props = {
-  params: { editorId: string };
+type WorkflowEditorPageProps = {
+  params: Promise<{
+    editorId: string;
+  }>;
 };
 
-const Page = async ({ params }: Props) => {
-  const workflow = await onGetWorkflow(params.editorId);
+type WorkflowEdge = {
+  id: string;
+  source: string;
+  target: string;
+};
 
-  const initialData = workflow
-    ? {
-        elements: workflow.nodes ? JSON.parse(workflow.nodes as string) : [],
-        edges: workflow.edges ? JSON.parse(workflow.edges as string) : [],
-        metadata: {
-          name: workflow.name,
-          description: workflow.description || "",
-          publish: workflow.publish,
-          updatedAt: workflow.updatedAt.toISOString(),
-        },
-      }
-    : undefined;
+const parseWorkflowJson = <T,>(value: string | null | undefined): T[] => {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const Page = async ({ params }: WorkflowEditorPageProps) => {
+  const { editorId } = await params;
+  const workflow = await onGetNodesEdges(editorId);
+  const initialNodes = parseWorkflowJson<EditorNodeType>(workflow?.nodes);
+  const initialEdges = parseWorkflowJson<WorkflowEdge>(workflow?.edges);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <ErrorBoundary fallbackTitle="Editor Error" showHomeButton>
-        <EditorProvider initialData={initialData}>
-          <ConnectionsProvider>
-            <EditorHeader />
-            <EditorCanvas />
-          </ConnectionsProvider>
-        </EditorProvider>
-      </ErrorBoundary>
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <EditorProvider>
+        <ConnectionsProvider>
+          <EditorCanvas
+            workflowId={editorId}
+            initialNodes={initialNodes}
+            initialEdges={initialEdges}
+          />
+        </ConnectionsProvider>
+      </EditorProvider>
     </div>
   );
 };

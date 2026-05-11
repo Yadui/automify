@@ -1,9 +1,6 @@
-import {
-  OrbitingCircles,
-  OrbitingCirclesProps,
-} from "@/components/magicui/orbiting-circles";
+import { OrbitingCircles } from "@/components/magicui/orbiting-circles";
 
-export function OrbitingCirclesDemo(props: OrbitingCirclesProps) {
+export function OrbitingCirclesDemo() {
   return (
     <div className="animate-orbit flex h-[50px] w-full flex-col items-center justify-center ">
       <OrbitingCircles iconSize={40}>

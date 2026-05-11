@@ -1,15 +1,15 @@
 "use server";
 
 import db from "@/lib/db";
-import { validateRequest } from "@/lib/auth";
+import { getAppUser } from "@/lib/app-auth";
 
 export const onPaymentDetails = async () => {
-  const { user } = await validateRequest();
+  const user = await getAppUser();
 
   if (user) {
-    const connection = await db.user.findUnique({
+    const connection = await db.user.findFirst({
       where: {
-        id: Number(user.id),
+        clerkId: user.id,
       },
       select: {
         tier: true,
@@ -17,7 +17,8 @@ export const onPaymentDetails = async () => {
       },
     });
 
-    return connection;
+    if (user) {
+      return connection;
+    }
   }
-  return null;
 };

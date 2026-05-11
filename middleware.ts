@@ -1,56 +1,39 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { isLocalAuthEnabled, LOCAL_AUTH_COOKIE } from "@/lib/local-auth-config";
+import { nextAuthSecret } from "@/lib/auth-secret";
 
-const isProtectedRoute = (pathname: string) => {
-  return (
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/connections") ||
-    pathname.startsWith("/workflows")
-  );
-};
+const protectedRoutes = [
+  "/dashboard(.*)",
+  "/connections(.*)",
+  "/workflows(.*)",
+  "/billing(.*)",
+  "/settings(.*)",
+  "/support(.*)",
+  "/guide(.*)",
+  "/templates(.*)",
+  "/forum(.*)",
+] as const;
 
-// Simple memory-based rate limiter for dev/demonstration
-// NOTE: For production, use a distributed store like Upstash/Redis
-const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
-const RATE_LIMIT = 20; // max requests
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const isProtectedRoute = (pathname: string) =>
+  protectedRoutes.some((route) => {
+    const basePath = route.replace("(.*)", "");
+    return pathname === basePath || pathname.startsWith(`${basePath}/`);
+  });
 
-const rateLimit = (ip: string) => {
-  const now = Date.now();
-  const userData = rateLimitMap.get(ip) || { count: 0, lastReset: now };
-
-  if (now - userData.lastReset > RATE_LIMIT_WINDOW) {
-    userData.count = 1;
-    userData.lastReset = now;
-  } else {
-    userData.count++;
+export default async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname === "/guide/sign-in") {
+    return NextResponse.redirect(new URL("/guide/apps", req.url));
   }
 
-  rateLimitMap.set(ip, userData);
-  return userData.count <= RATE_LIMIT;
-};
+  const token = await getToken({ req, secret: nextAuthSecret });
+  const hasLocalSession =
+    isLocalAuthEnabled() && Boolean(req.cookies.get(LOCAL_AUTH_COOKIE)?.value);
 
-export default async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const ip = request.ip || "127.0.0.1";
-
-  // Apply rate limiting to API routes (excluding notifications which might be high volume)
-  if (pathname.startsWith("/api") && !pathname.includes("/drive-activity")) {
-    if (!rateLimit(ip)) {
-      return new NextResponse("Too Many Requests", {
-        status: 429,
-        headers: {
-          "Retry-After": "60",
-        },
-      });
-    }
-  }
-
-  const sessionCookie = request.cookies.get("auth_session");
-
-  if (!sessionCookie && isProtectedRoute(pathname)) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+  if (!token && !hasLocalSession && isProtectedRoute(req.nextUrl.pathname)) {
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
+    return NextResponse.redirect(signInUrl);
   }
 
   return NextResponse.next();
@@ -58,6 +41,9 @@ export default async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
   ],
 };

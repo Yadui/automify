@@ -1,32 +1,19 @@
-import { validateRequest } from "@/lib/auth";
-import PageHeader from "@/components/page-header";
-import BillingContent from "./_components/billing-content";
-import { Suspense } from "react";
-import { BillingSkeleton } from "./_components/billing-skeleton";
+import React from "react";
+import BillingDashboard from "./_components/billing-dashboard";
 
-type Props = {
-  searchParams?: { [key: string]: string | undefined };
-};
-
-const Billing = async (props: Props) => {
-  const { session_id } = props.searchParams ?? {
-    session_id: "",
-  };
-
-  const { user } = await validateRequest();
-  if (!user) return null;
-
+const Billing = async () => {
   return (
-    <div className="flex flex-col h-[90vh] w-[92vw]">
-      <PageHeader
-        title="Billing"
-        description="Manage your subscription and payment methods"
-      />
-      <div className="flex-1 p-6">
-        <Suspense fallback={<BillingSkeleton />}>
-          <BillingContent userId={Number(user.id)} session_id={session_id} />
-        </Suspense>
-      </div>
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
+      <header className="ds-page-header">
+        <div>
+          <p className="ds-eyebrow">Credits and plans</p>
+          <h1 className="ds-page-title mt-3">Billing</h1>
+          <p className="mt-3 max-w-2xl leading-7 text-[#4d4d4d]">
+            Review your tier, purchase more capacity, and keep workflow usage predictable.
+          </p>
+        </div>
+      </header>
+      <BillingDashboard />
     </div>
   );
 };

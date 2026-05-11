@@ -5,13 +5,12 @@ import { useBilling } from "@/providers/billing-provider";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { SubscriptionCard } from "./subscription-card";
-import LicenseHistory from "./license-history";
-import { Zap, Crown, Sparkles } from "lucide-react";
+import CreditTracker from "./credits-tracker";
+import { isPaidBillingPlanName, type BillingPlanName, type PaidBillingPlanName } from "@/lib/pricing-plans";
 
-// Define the product type that matches your Stripe API response
-interface StripeProduct {
+interface BillingProduct {
   id: string;
-  nickname: "Free" | "Pro" | "Unlimited";
+  nickname: BillingPlanName;
   description?: string;
   active: boolean;
   default_price?: string;
@@ -19,121 +18,148 @@ interface StripeProduct {
   currency?: string;
 }
 
-interface BillingDashboardProps {
-  licenses: any[];
+type RazorpayOrderResponse = {
+  keyId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  plan: PaidBillingPlanName;
+};
+
+type RazorpayPaymentResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayPaymentResponse) => void;
+  notes?: Record<string, string>;
+  theme?: { color: string };
+  modal?: { ondismiss: () => void };
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
+  }
 }
 
-// Static plans as fallback
-const STATIC_PLANS: StripeProduct[] = [
-  { id: "free", nickname: "Free", active: true },
-  { id: "pro", nickname: "Pro", active: true },
-  { id: "unlimited", nickname: "Unlimited", active: true },
-];
+const loadRazorpayCheckout = () =>
+  new Promise<boolean>((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
 
-export default function BillingDashboard({ licenses }: BillingDashboardProps) {
-  const { credits, tier } = useBilling();
-  const [stripeProducts, setStripeProducts] =
-    useState<StripeProduct[]>(STATIC_PLANS);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
-  const onStripeProducts = async () => {
+export default function BillingDashboard() {
+  const { credits, tier, setCredits, setTier } = useBilling();
+  const [products, setProducts] = useState<BillingProduct[]>([]);
+  const [payingPlan, setPayingPlan] = useState<BillingPlanName | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  const onBillingProducts = async () => {
     try {
-      const { data } = await axios.get<StripeProduct[]>("/api/payment");
-      if (data && data.length > 0) {
-        // Map prices to products with nicknames
-        const mappedProducts = data.map((price: any) => ({
-          id: price.id,
-          nickname: price.nickname || price.product?.name || "Unknown",
-          active: price.active,
-        }));
-        if (mappedProducts.length > 0) {
-          setStripeProducts(mappedProducts as StripeProduct[]);
-        }
+      const { data } = await axios.get<BillingProduct[]>("/api/payment");
+      if (data) {
+        setProducts(data);
       }
     } catch (error) {
-      console.error("Failed to fetch stripe products:", error);
-      // Keep static plans on error
+      console.error("Failed to fetch billing products:", error);
     }
   };
 
   useEffect(() => {
-    onStripeProducts();
+    onBillingProducts();
   }, []);
 
-  const onPayment = async (id: string) => {
-    const { data } = await axios.post<string>(
-      "/api/payment",
-      {
-        priceId: id,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
-    window.location.assign(data);
-  };
+  const onPayment = async (plan: BillingPlanName) => {
+    if (!isPaidBillingPlanName(plan)) return;
 
-  const getTierIcon = () => {
-    switch (tier) {
-      case "Unlimited":
-        return <Crown className="w-6 h-6" />;
-      case "Pro":
-        return <Sparkles className="w-6 h-6" />;
-      default:
-        return <Zap className="w-6 h-6" />;
+    setPayingPlan(plan);
+    setPaymentError(null);
+    const checkoutLoaded = await loadRazorpayCheckout();
+    if (!checkoutLoaded || !window.Razorpay) {
+      setPayingPlan(null);
+      setPaymentError("Razorpay checkout could not load. Please try again.");
+      console.error("Razorpay checkout failed to load.");
+      return;
+    }
+
+    try {
+      const { data } = await axios.post<RazorpayOrderResponse>(
+        "/api/payment",
+        { plan },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      const checkout = new window.Razorpay({
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: "Automify",
+        description: `${data.plan} plan`,
+        order_id: data.orderId,
+        notes: { plan: data.plan },
+        theme: { color: "#171717" },
+        modal: {
+          ondismiss: () => setPayingPlan(null),
+        },
+        handler: async (response) => {
+          try {
+            const verification = await axios.post<{ tier: BillingPlanName; credits: string }>(
+              "/api/payment/verify",
+              { plan: data.plan, ...response },
+              { headers: { "Content-Type": "application/json" } }
+            );
+
+            setTier(verification.data.tier);
+            setCredits(verification.data.credits);
+            setPaymentError(null);
+          } catch (verificationError) {
+            setPaymentError("Payment was captured, but verification failed. Please contact support.");
+            console.error("Failed to verify Razorpay payment:", verificationError);
+          }
+          setPayingPlan(null);
+        },
+      });
+
+      checkout.open();
+    } catch (error) {
+      setPayingPlan(null);
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error ?? "Unable to start Razorpay checkout."
+        : "Unable to start Razorpay checkout.";
+      setPaymentError(message);
+      console.error("Failed to start Razorpay payment:", error);
     }
   };
 
   return (
-    <div className="space-y-10">
-      {/* Current Plan Overview */}
-      <div className="p-8 rounded-3xl border border-border bg-card/50 backdrop-blur-xl relative overflow-hidden group">
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
-              Current Plan
-            </h2>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                {getTierIcon()}
-              </div>
-              <span className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent italic font-mono uppercase">
-                {tier}
-              </span>
-              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
-                ACTIVE
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-sm text-muted-foreground">
-              Remaining Credits
-            </span>
-            <span className="text-5xl font-mono font-bold">
-              {tier === "Unlimited" ? "∞" : credits.toLocaleString()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Upgrade Plans */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold italic font-mono uppercase">
-            Upgrade your plan
-          </h2>
-          <div className="h-[1px] flex-1 bg-border" />
-        </div>
+    <>
+      <div className="flex gap-5">
         <SubscriptionCard
           onPayment={onPayment}
+          payingPlan={payingPlan}
           tier={tier}
-          products={stripeProducts}
+          products={products}
         />
       </div>
-
-      {/* License History */}
-      <LicenseHistory licenses={licenses} />
-    </div>
+      {paymentError && <p className="mt-3 text-sm text-red-500">{paymentError}</p>}
+      <CreditTracker tier={tier} credits={credits} />
+    </>
   );
 }

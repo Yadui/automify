@@ -120,7 +120,7 @@ export const CardItem = forwardRef(
       rotateZ = 0,
       ...rest
     }: CardItemProps<T>,
-    ref: React.Ref<any>
+    ref: React.Ref<HTMLElement>
   ) => {
     const Component = as || "div";
     const localRef = useRef<HTMLElement>(null);
