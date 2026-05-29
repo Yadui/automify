@@ -52,7 +52,7 @@ export const getOrCreateLocalLoginUser = async (email: string, name?: string) =>
 
   return db.user.create({
     data: {
-      clerkId: localAppIdForEmail(normalizedEmail),
+      appId: localAppIdForEmail(normalizedEmail),
       email: normalizedEmail,
       name: displayName,
       tier: "Free",
@@ -114,7 +114,7 @@ export const clearLocalSessionCookie = async () => {
 };
 
 export const ensureLocalSessionUser = async (session: LocalAuthSession) => {
-  const existingByAppId = await db.user.findUnique({ where: { clerkId: session.sub } });
+  const existingByAppId = await db.user.findUnique({ where: { appId: session.sub } });
   if (existingByAppId) return existingByAppId;
 
   const existingByEmail = await db.user.findUnique({ where: { email: session.email } });
@@ -122,7 +122,7 @@ export const ensureLocalSessionUser = async (session: LocalAuthSession) => {
 
   return db.user.create({
     data: {
-      clerkId: session.sub,
+      appId: session.sub,
       email: session.email,
       name: session.name,
       tier: "Free",

@@ -58,7 +58,7 @@ export const localLoginAction = async (
 
   const user = await getOrCreateLocalLoginUser(email, name);
   const session = createLocalSession({
-    sub: user.clerkId,
+    sub: user.appId,
     email: user.email,
     name: user.name,
   });

@@ -29,31 +29,31 @@ const normalizeWorkflowInput = (input: unknown) => {
 
 const resolveWorkflowOwnerId = async (user: AppAuthUser) => {
   const existingById = await db.user.findUnique({
-    where: { clerkId: user.id },
-    select: { clerkId: true },
+    where: { appId: user.id },
+    select: { appId: true },
   });
 
-  if (existingById) return existingById.clerkId;
+  if (existingById) return existingById.appId;
 
   const existingByEmail = await db.user.findUnique({
     where: { email: user.email },
-    select: { clerkId: true },
+    select: { appId: true },
   });
 
-  if (existingByEmail) return existingByEmail.clerkId;
+  if (existingByEmail) return existingByEmail.appId;
 
   const created = await db.user.create({
     data: {
-      clerkId: user.id,
+      appId: user.id,
       email: user.email,
       name: user.name,
       tier: "Free",
       credits: "10",
     },
-    select: { clerkId: true },
+    select: { appId: true },
   });
 
-  return created.clerkId;
+  return created.appId;
 };
 
 export const getGoogleListener = async () => {
@@ -62,7 +62,7 @@ export const getGoogleListener = async () => {
   if (user) {
     const listener = await db.user.findUnique({
       where: {
-        clerkId: user.id,
+        appId: user.id,
       },
       select: {
         googleResourceId: true,
@@ -311,7 +311,7 @@ export const deductCredit = async (): Promise<{
   if (!user) return { error: "Not authenticated." };
 
   const dbUser = await db.user.findUnique({
-    where: { clerkId: user.id },
+    where: { appId: user.id },
     select: { credits: true, tier: true },
   });
   if (!dbUser) return { error: "User not found." };
@@ -328,7 +328,7 @@ export const deductCredit = async (): Promise<{
 
   const remaining = current - 1;
   await db.user.update({
-    where: { clerkId: user.id },
+    where: { appId: user.id },
     data: { credits: String(remaining) },
   });
 

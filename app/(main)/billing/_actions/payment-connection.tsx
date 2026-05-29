@@ -9,7 +9,7 @@ export const onPaymentDetails = async () => {
   if (user) {
     const connection = await db.user.findFirst({
       where: {
-        clerkId: user.id,
+        appId: user.id,
       },
       select: {
         tier: true,

@@ -31,7 +31,7 @@ export const onFlowPublish = async (workflowId: string, state: boolean) => {
     throw new Error("User not authenticated");
   }
   const dbUser = await db.user.findUnique({
-    where: { clerkId: user.id },
+    where: { appId: user.id },
     select: { credits: true },
   });
   const published = await db.workflows.update({
@@ -49,7 +49,7 @@ export const onFlowPublish = async (workflowId: string, state: boolean) => {
     // Deduct credits only when publishing
     if (dbUser.credits !== "Unlimited") {
       await db.user.update({
-        where: { clerkId: user.id },
+        where: { appId: user.id },
         data: { credits: `${parseInt(dbUser.credits!) - 1}` },
       });
     }

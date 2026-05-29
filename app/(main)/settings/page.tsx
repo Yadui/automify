@@ -7,7 +7,7 @@ const Settings = async () => {
   const authUser = await getAppUser();
   if (!authUser) return null;
 
-  const user = await db.user.findUnique({ where: { clerkId: authUser.id } });
+  const user = await db.user.findUnique({ where: { appId: authUser.id } });
   const displayName = user?.name || authUser.name || authUser.email;
   const initial = displayName?.trim()?.[0]?.toUpperCase() || "A";
 
@@ -16,7 +16,7 @@ const Settings = async () => {
 
     const updateUser = await db.user.update({
       where: {
-        clerkId: authUser.id,
+        appId: authUser.id,
       },
       data: {
         name,

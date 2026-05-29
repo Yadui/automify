@@ -14,7 +14,7 @@ const Layout = async (props: Props) => {
   if (!appUser) redirect("/sign-in");
 
   const billing = await db.user.findUnique({
-    where: { clerkId: appUser.id },
+    where: { appId: appUser.id },
     select: { credits: true, tier: true },
   });
 

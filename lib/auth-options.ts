@@ -53,6 +53,19 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  logger: {
+    error(code, metadata) {
+      // A session cookie encrypted with a previous/rotated secret cannot be
+      // decrypted (JWEDecryptionFailed). This is benign — the user is simply
+      // treated as logged out and re-authenticates — so don't spam it.
+      if (code === "JWT_SESSION_ERROR") return;
+      console.error(`[next-auth][error][${code}]`, metadata);
+    },
+    warn(code) {
+      console.warn(`[next-auth][warn][${code}]`);
+    },
+    debug() {},
+  },
   pages: {
     signIn: "/sign-in",
     error: "/sign-in",
@@ -91,12 +104,12 @@ export const authOptions: NextAuthOptions = {
           await onGoogleDriveConnect(
             account.access_token,
             account.refresh_token,
-            appUser.clerkId,
+            appUser.appId,
             account.scope
           );
         }
 
-        token.appUserId = appUser.clerkId;
+        token.appUserId = appUser.appId;
         token.name = appUser.name || token.name;
         token.email = appUser.email;
         token.picture = null;

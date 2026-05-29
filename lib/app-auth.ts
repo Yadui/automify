@@ -30,7 +30,7 @@ export const getAppUser = async (): Promise<AppAuthUser | null> => {
 
   const user = await ensureLocalSessionUser(localSession);
   return {
-    id: user.clerkId,
+    id: user.appId,
     email: user.email,
     name: user.name ?? localSession.name,
     imageUrl: null,
