@@ -43,7 +43,7 @@ const MANAGED_PROVIDERS = [
 const WebhookWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   // Mode: custom (default) or managed (future)
   const [mode, setMode] = useState<"custom" | "managed">(

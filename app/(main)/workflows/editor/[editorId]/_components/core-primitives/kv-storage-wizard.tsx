@@ -30,7 +30,7 @@ const mockStorage: Record<string, string> = {
 const KVStorageWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   const [action, setAction] = useState(metadata.action || "get");
   const [key, setKey] = useState(metadata.key || "");

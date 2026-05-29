@@ -113,6 +113,45 @@ export type EditorActions =
         nodeId: string;
         status: "pending" | "running" | "success" | "error";
       };
+    }
+  | {
+      type: "OPEN_ADD_MODAL";
+      payload: {
+        position: { x: number; y: number };
+        edgeId?: string;
+        sourceNodeId?: string;
+      };
+    }
+  | { type: "CLOSE_ADD_MODAL" }
+  | {
+      type: "SET_SIDEBAR_VISIBILITY";
+      payload: {
+        open: boolean;
+      };
+    }
+  | {
+      type: "COPY_NODE";
+      payload: {
+        node: EditorNode;
+      };
+    }
+  | {
+      type: "PASTE_NODE";
+      payload: {
+        position: { x: number; y: number };
+      };
+    }
+  | {
+      type: "DUPLICATE_NODE";
+      payload: {
+        node: EditorNode;
+      };
+    }
+  | {
+      type: "DELETE_NODE";
+      payload: {
+        nodeId: string;
+      };
     };
 
 export const nodeMapper: Partial<Record<ConnectionTypes, keyof ConnectionProviderProps>> = {

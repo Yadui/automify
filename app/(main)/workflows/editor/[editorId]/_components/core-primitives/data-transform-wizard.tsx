@@ -34,7 +34,7 @@ const safeJsonParse = (str: string, fallback: any = {}) => {
 const DataTransformWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   const [operation, setOperation] = useState(metadata.operation || "merge");
   const [inputData, setInputData] = useState(metadata.inputData || "");

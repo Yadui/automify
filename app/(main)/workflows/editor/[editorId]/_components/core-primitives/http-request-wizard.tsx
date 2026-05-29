@@ -33,7 +33,7 @@ interface KeyValue {
 const HttpRequestWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   const [method, setMethod] = useState(metadata.method || "GET");
   const [url, setUrl] = useState(metadata.url || "");

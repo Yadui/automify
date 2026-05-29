@@ -25,14 +25,14 @@ import { parseVariables } from "@/lib/utils";
 const ToastWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   const [message, setMessage] = useState(metadata.message || "");
   const [type, setType] = useState(metadata.type || "success");
 
   // Sync state when selectedNode changes
   React.useEffect(() => {
-    const newMeta = selectedNode.data.metadata || {};
+    const newMeta = (selectedNode.data.metadata || {}) as Record<string, any>;
     setMessage(newMeta.message || "");
     setType(newMeta.type || "success");
   }, [selectedNode.id, selectedNode.data.metadata]);
