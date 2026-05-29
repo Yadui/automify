@@ -28,6 +28,7 @@ import { v4 } from "uuid";
 import { EditorCanvasDefaultCardTypes } from "@/lib/constant";
 import FlowInstance from "./flow-instance";
 import EditorCanvasSidebar from "./editor-canvas-sidebar";
+import EditorHeader from "./editor-header";
 import { EditorNodeActionsProvider } from "./editor-node-actions-context";
 
 type WorkflowEdge = {
@@ -289,7 +290,9 @@ const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasPr
 
   return (
     <EditorNodeActionsProvider value={{ deleteNode, duplicateNode, canDuplicateNode }}>
-      <ResizablePanelGroup direction="horizontal" className="min-h-0 overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <EditorHeader />
+        <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1 overflow-hidden">
         <ResizablePanel defaultSize={70}>
           <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
             <ReactFlow
@@ -323,6 +326,7 @@ const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasPr
           </FlowInstance>
         </ResizablePanel>
       </ResizablePanelGroup>
+      </div>
     </EditorNodeActionsProvider>
   );
 };

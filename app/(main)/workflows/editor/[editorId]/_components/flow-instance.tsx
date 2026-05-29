@@ -75,16 +75,6 @@ const FlowInstance = ({ children, edges, nodes, workflowId }: Props) => {
           <p className="text-sm font-semibold text-[#171717]">Workflow</p>
           <p className="text-xs text-[#666666]">{nodes.length} nodes, {edges.length} links</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onFlowAutomation} disabled={!canSave}>
-            <Save className="mr-2 h-4 w-4" />
-            Save
-          </Button>
-          <Button size="sm" disabled={!canPublish} onClick={onPublishWorkflow}>
-            <Rocket className="mr-2 h-4 w-4" />
-            Publish
-          </Button>
-        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {children}

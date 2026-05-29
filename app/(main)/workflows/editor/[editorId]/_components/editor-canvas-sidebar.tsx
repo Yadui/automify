@@ -28,6 +28,7 @@ import { useFuzzieStore } from "@/store";
 import { onCreateNodesEdges } from "../_actions/workflow-connections";
 import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
 import RenderOutputAccordion from "./render-output-accordian";
+import NodeConfigRouter from "./node-config-router";
 
 type Props = {
   nodes: EditorNodeType[];
@@ -405,69 +406,14 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
             ))}
           </TabsContent>
 
-          <TabsContent value="configure" className="m-0 p-4">
+          <TabsContent value="configure" className="m-0 h-full p-0">
             {!selectedNode ? (
-              <p className="rounded-md border border-dashed border-[#d4d4d4] p-4 text-sm leading-6 text-[#666666]">
+              <p className="m-4 rounded-md border border-dashed border-[#d4d4d4] p-4 text-sm leading-6 text-[#666666]">
                 Select a node on the canvas to configure it.
               </p>
             ) : (
-              <div className="flex flex-col gap-4">
-                <section className="rounded-md border border-[#e5e5e5] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-[#171717]">Account</h3>
-                      <p className="mt-1 text-xs leading-5 text-[#666666]">{accountStatus.detail}</p>
-                    </div>
-                    <StatusBadge status={accountStatus} />
-                  </div>
-                  {nodeConnection.isLoading && (
-                    <p className="mt-3 text-xs text-[#666666]">Loading connected accounts...</p>
-                  )}
-                  {selectedConnection && (
-                    <>
-                      <Separator className="my-4" />
-                      <div className="flex flex-col gap-3">
-                        <p className="text-xs leading-5 text-[#666666]">
-                          {selectedConnection.sharedCredentialType
-                            ? `Uses ${selectedConnection.sharedCredentialType} credentials.`
-                            : selectedConnection.description}
-                        </p>
-                        <Link
-                          href={selectedConnectionHref}
-                          onClick={handleConnectionLinkClick}
-                          className="inline-flex h-9 items-center justify-center rounded-md bg-[#171717] px-3 text-sm font-medium text-white transition-colors hover:bg-[#333333]"
-                        >
-                          {isStartingConnection ? "Starting..." : selectedConnectionLabel}
-                        </Link>
-                      </div>
-                    </>
-                  )}
-                </section>
-
-                <section className="rounded-md border border-[#e5e5e5] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-[#171717]">Action</h3>
-                      <p className="mt-1 text-xs leading-5 text-[#666666]">{actionStatus.detail}</p>
-                    </div>
-                    <StatusBadge status={actionStatus} />
-                  </div>
-                  {canConfigureAction ? (
-                    <div className="mt-4">
-                      <RenderOutputAccordion
-                        state={state}
-                        nodeConnection={nodeConnection}
-                        onUpdateNodeMetadata={onUpdateNodeMetadata}
-                      />
-                    </div>
-                  ) : (
-                    <p className="mt-4 text-sm leading-6 text-[#666666]">
-                      {isConnectorType(selectedTitle)
-                        ? "Open Configure to load this connector's setup fields."
-                        : "This node has no app-specific configuration."}
-                    </p>
-                  )}
-                </section>
+              <div className="h-full">
+                <NodeConfigRouter nodeType={selectedNode.type} />
               </div>
             )}
           </TabsContent>
