@@ -4,16 +4,15 @@ import {
   CircuitBoard,
   Database,
   GitBranch,
-  Github,
   HardDrive,
   KanbanSquare,
   Mail,
   MousePointerClickIcon,
-  Slack,
   Timer,
   Webhook,
   Zap,
 } from "lucide-react";
+import { Github, Slack } from "@/components/icons/brand-icons";
 import type { ComponentType } from "react";
 import type { EditorCanvasTypes } from "@/lib/types";
 import { cn } from "@/lib/utils";

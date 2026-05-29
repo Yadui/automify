@@ -13,8 +13,8 @@ import {
   Loader2,
   Undo2,
   Clock,
-  Github,
 } from "lucide-react";
+import { Github } from "@/components/icons/brand-icons";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

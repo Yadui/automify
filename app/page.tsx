@@ -90,12 +90,15 @@ export default function Home() {
             <span className="ds-eyebrow">Dashboard preview</span>
           </div>
           <div className="relative aspect-[16/8] w-full bg-[#fafafa]">
-            <Image
-              src="/temp-banner.png"
-              alt="Automify dashboard preview"
-              fill
-              priority
-              className="object-cover object-top"
+            <video
+              src="/automify-demo.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              aria-label="Automify product demo"
+              className="absolute inset-0 h-full w-full object-cover object-top"
             />
           </div>
         </div>
