@@ -42,7 +42,7 @@ const SLACK_EVENTS = [
 
 export const SlackWizard = () => {
   const { state, dispatch } = useEditor();
-  const { nodeConnection } = useNodeConnections();
+  const nodeConnection = useNodeConnections();
   const {
     slackChannels,
     setSlackChannels,

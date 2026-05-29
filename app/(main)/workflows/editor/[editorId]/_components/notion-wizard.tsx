@@ -104,12 +104,9 @@ export const NotionWizard = () => {
       if (!notionInfo?.accessToken) return;
       setLoadingDatabases(true);
       try {
-        const result = await getNotionDatabases(notionInfo.accessToken);
-        if (result.databases) {
-          setDatabases(result.databases);
-        }
-        if (result.error) {
-          toast.error("Failed to fetch databases: " + result.error);
+        const result = await getNotionDatabases();
+        if (result.length) {
+          setDatabases(result.map((d) => ({ id: d.value, title: d.label, icon: "" })));
         }
       } catch (e) {
         console.error("Failed to fetch Notion databases:", e);
@@ -125,9 +122,9 @@ export const NotionWizard = () => {
     if (!notionInfo?.accessToken) return;
     setLoadingDatabases(true);
     try {
-      const result = await getNotionDatabases(notionInfo.accessToken);
-      if (result.databases) {
-        setDatabases(result.databases);
+      const result = await getNotionDatabases();
+      if (result.length) {
+        setDatabases(result.map((d) => ({ id: d.value, title: d.label, icon: "" })));
         toast.success("Databases refreshed");
       }
     } catch (e) {

@@ -44,7 +44,7 @@ type Step = 1 | 2 | 3 | 4;
 
 export const GmailWizard = () => {
   const { state, dispatch } = useEditor();
-  const { nodeConnection } = useNodeConnections();
+  const nodeConnection = useNodeConnections();
   const selectedNode = state.editor.selectedNode;
 
   const [step, setStep] = useState<Step>(1);

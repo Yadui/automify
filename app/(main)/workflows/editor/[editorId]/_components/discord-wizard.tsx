@@ -75,7 +75,7 @@ export const DiscordWizard = () => {
     const fetchWebhook = async () => {
       setLoading(true);
       try {
-        const info = await getDiscordConnectionUrl();
+        const info = (await getDiscordConnectionUrl()) as any;
         if (info && info.url && !info.needsReconnect) {
           setWebhookInfo(info as any);
         } else if (info?.needsReconnect) {

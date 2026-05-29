@@ -63,7 +63,7 @@ const GOOGLE_DRIVE_EVENTS = [
 
 export const GoogleDriveWizard = () => {
   const { state, dispatch } = useEditor();
-  const { nodeConnection } = useNodeConnections();
+  const nodeConnection = useNodeConnections();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
@@ -173,7 +173,7 @@ export const GoogleDriveWizard = () => {
     if (step === 2 && hasFiles === null) {
       const checkFiles = async () => {
         const result = await getGoogleFiles();
-        setHasFiles(result.files && result.files.length > 0);
+        setHasFiles(!!(result.files && result.files.length > 0));
       };
       checkFiles();
     }

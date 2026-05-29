@@ -10,7 +10,8 @@ const TriggerWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
   const [triggerType, setTriggerType] = useState<string>(
-    selectedNode.data.metadata?.triggerType || "manual",
+    (selectedNode.data.metadata as Record<string, any>)?.triggerType ||
+      "manual",
   );
 
   const triggerOptions = [
