@@ -99,6 +99,20 @@ export type EditorActions =
       payload: {
         element: EditorNode;
       };
+    }
+  | { type: "CLEAR_RUN_STATUS" }
+  | {
+      type: "SET_LAST_RUN_SUCCESS";
+      payload: {
+        success: boolean;
+      };
+    }
+  | {
+      type: "SET_NODE_RUN_STATUS";
+      payload: {
+        nodeId: string;
+        status: "pending" | "running" | "success" | "error";
+      };
     };
 
 export const nodeMapper: Partial<Record<ConnectionTypes, keyof ConnectionProviderProps>> = {

@@ -300,3 +300,37 @@ export const onGetNodesEdges = async (flowId: string) => {
   });
   if (nodesEdges?.nodes && nodesEdges?.edges) return nodesEdges;
 };
+
+// Deducts one workflow-run credit from the current user.
+// Returns the remaining balance, or an error message when out of credits.
+export const deductCredit = async (): Promise<{
+  remaining?: number;
+  error?: string;
+}> => {
+  const user = await getAppUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const dbUser = await db.user.findUnique({
+    where: { clerkId: user.id },
+    select: { credits: true, tier: true },
+  });
+  if (!dbUser) return { error: "User not found." };
+
+  // Unlimited tiers (or non-numeric credit values) are not deducted.
+  const current = Number(dbUser.credits);
+  if (dbUser.tier === "Unlimited" || Number.isNaN(current)) {
+    return {};
+  }
+
+  if (current <= 0) {
+    return { error: "you are out of credits." };
+  }
+
+  const remaining = current - 1;
+  await db.user.update({
+    where: { clerkId: user.id },
+    data: { credits: String(remaining) },
+  });
+
+  return { remaining };
+};

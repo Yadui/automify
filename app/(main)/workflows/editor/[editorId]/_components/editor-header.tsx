@@ -9,7 +9,6 @@ import {
 import { testGoogleDriveStep } from "../../../../connections/_actions/google-connection";
 import { sendGmail } from "../../../../connections/_actions/google-gmail-action";
 import {
-  onGetWorkflow,
   deductCredit,
 } from "../../../_actions/workflow-connections";
 import {
@@ -89,9 +88,10 @@ const EditorHeader = () => {
         JSON.stringify(isFlow),
       );
       if (response) {
-        if (!isSilent && response.message) toast.success(response.message);
-        if (response.error) toast.error(response.error);
-        if (response.message) {
+        const res = response as { message?: string; error?: string };
+        if (!isSilent && res.message) toast.success(res.message);
+        if (res.error) toast.error(res.error);
+        if (res.message) {
           setLastSaved(new Date());
           // Update state metadata so it doesn't trigger a re-sync loop if we use it for logic
           // Though here we just update local state for now.
@@ -129,9 +129,9 @@ const EditorHeader = () => {
     if (triggerNodes.length === 0 && nodes.length > 0) {
       triggerNodes = nodes.filter(
         (n) =>
-          n.type === "Trigger" ||
+          (n.type as string) === "Trigger" ||
           n.data.type === "Trigger" ||
-          n.type === "Onboarding Trigger", // Future proofing
+          (n.type as string) === "Onboarding Trigger", // Future proofing
       );
     }
 
@@ -191,8 +191,8 @@ const EditorHeader = () => {
       }
 
       const nodeName = node.data?.title || node.data?.type || "Unknown Node";
-      const nodeType = node.data?.type || "Unknown";
-      const nodeEvent = node.data?.metadata?.event;
+      const nodeType: string = node.data?.type || "Unknown";
+      const nodeEvent = node.data?.metadata?.event as string | undefined;
 
       dispatch({
         type: "SET_NODE_RUN_STATUS",
@@ -217,7 +217,7 @@ const EditorHeader = () => {
             duration: 30000,
           });
 
-          const nodeMetadata = node.data?.metadata || {};
+          const nodeMetadata = (node.data?.metadata || {}) as Record<string, any>;
           const initialResult = await testGoogleDriveStep(
             nodeEvent,
             nodeMetadata,
@@ -254,7 +254,7 @@ const EditorHeader = () => {
           if (!detected && !executionError)
             executionError = "Timed out waiting for action";
         } else if (nodeType === "Toast Message") {
-          const metadata = node.data?.metadata || {};
+          const metadata = (node.data?.metadata || {}) as Record<string, any>;
           const rawMessage = metadata.message || "Operation completed";
           const parsedMessage = parseVariables(rawMessage, currentElements);
           const type = metadata.type || "success";
@@ -279,7 +279,7 @@ const EditorHeader = () => {
           nodeResultData = { message: parsedMessage, type };
           await new Promise((resolve) => setTimeout(resolve, 500));
         } else if (nodeType === "Email") {
-          const metadata = node.data?.metadata || {};
+          const metadata = (node.data?.metadata || {}) as Record<string, any>;
           const to = parseVariables(metadata.to || "", currentElements);
           const subject = parseVariables(
             metadata.subject || "",
@@ -309,7 +309,7 @@ const EditorHeader = () => {
             throw new Error(res.error || "Failed to send email");
           }
         } else if (nodeType === "Discord") {
-          const metadata = node.data?.metadata || {};
+          const metadata = (node.data?.metadata || {}) as Record<string, any>;
           const rawMessage = metadata.message || "";
           const parsedMessage = parseVariables(rawMessage, currentElements);
 
@@ -333,7 +333,7 @@ const EditorHeader = () => {
             throw new Error(res.message || "Failed to post to Discord");
           }
         } else if (nodeType === "Notion") {
-          const metadata = node.data?.metadata || {};
+          const metadata = (node.data?.metadata || {}) as Record<string, any>;
           const rawContent = metadata.content || "";
           const parsedContent = parseVariables(rawContent, currentElements);
 
@@ -365,7 +365,7 @@ const EditorHeader = () => {
             throw new Error("Failed to create Notion page");
           }
         } else if (nodeType === "Slack") {
-          const metadata = node.data?.metadata || {};
+          const metadata = (node.data?.metadata || {}) as Record<string, any>;
           const rawMessage = metadata.message || metadata.content || "";
           const parsedMessage = parseVariables(rawMessage, currentElements);
 
@@ -398,7 +398,7 @@ const EditorHeader = () => {
           }
         } else if (nodeType === "Wait") {
           // Wait node execution
-          const waitConfig = node.data?.metadata?.config;
+          const waitConfig = node.data?.metadata?.config as any;
           const startedAt = new Date().toISOString();
           let waitMs = 0;
 
@@ -450,7 +450,7 @@ const EditorHeader = () => {
           toast.success(`Wait complete`);
         } else if (nodeType === "HTTP Request") {
           // HTTP Request execution
-          const metadata = node.data?.metadata || {};
+          const metadata = (node.data?.metadata || {}) as Record<string, any>;
           const method = metadata.method || "GET";
           const rawUrl = parseVariables(metadata.url || "", currentElements);
 
@@ -536,7 +536,7 @@ const EditorHeader = () => {
         executionError = err.message || "An error occurred";
       }
 
-      const isConfigured = node.data?.configStatus === "active";
+      const isConfigured = (node.data as any)?.configStatus === "active";
       const success = !executionError && isConfigured;
 
       if (success) {
@@ -611,10 +611,11 @@ const EditorHeader = () => {
     const response = await onFlowPublish(workflowId, newState);
 
     if (response) {
-      if (typeof response === "object" && response.error) {
-        toast.error(response.error);
-      } else if (typeof response === "object" && response.message) {
-        toast.success(response.message);
+      const res = response as { error?: string; message?: string };
+      if (typeof response === "object" && res.error) {
+        toast.error(res.error);
+      } else if (typeof response === "object" && res.message) {
+        toast.success(res.message);
         setIsPublished(newState);
       } else {
         // Fallback for string response if any
@@ -706,7 +707,7 @@ const EditorHeader = () => {
         <Button
           size="sm"
           variant="outline"
-          onClick={onFlowAutomation}
+          onClick={() => onFlowAutomation()}
           disabled={!hasNodes || isSaving}
           className="h-8"
           title="Save (⌘S)"
