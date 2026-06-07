@@ -18,7 +18,7 @@ import { StopCircle, AlertTriangle } from "lucide-react";
 const EndWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   const [reason, setReason] = useState(metadata.reason || "");
 

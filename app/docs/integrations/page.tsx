@@ -26,7 +26,7 @@ export default function IntegrationsPage() {
           >
             <div className="flex items-center gap-3 mb-2">
               <img
-                src="/googleDrive.png"
+                src="/googleDrive.svg"
                 alt="Google"
                 className="w-8 h-8 object-contain"
               />

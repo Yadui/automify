@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     }
 
     // Link connection if it doesn't exist
-    await db.connection.upsert({
+    await db.connections.upsert({
       where: {
         userId_provider_providerAccountId: {
           userId: user.id,

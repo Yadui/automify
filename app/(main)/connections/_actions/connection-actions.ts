@@ -21,7 +21,7 @@ export const disconnectConnection = async (title: string) => {
   }
 
   try {
-    await db.connection.deleteMany({
+    await db.connections.deleteMany({
       where: {
         userId: Number(user.id),
         provider: provider,

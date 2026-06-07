@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Chrome, Github, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { Chrome, Github } from "@/components/icons/brand-icons";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import type { OAuthProviderId } from "@/lib/oauth-provider-config";

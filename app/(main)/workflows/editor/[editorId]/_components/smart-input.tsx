@@ -384,7 +384,11 @@ const SmartInput = ({
                   placeholder="Search variables..."
                   autoFocus
                   value={search}
-                  onValueChange={setSearch}
+                  onValueChange={(val) =>
+                    // Strip a leading "/" so the trigger character never
+                    // appears in the search box when the popover opens via "/".
+                    setSearch(val.startsWith("/") ? val.slice(1) : val)
+                  }
                 />
                 <CommandList>
                   <CommandEmpty>No variables found.</CommandEmpty>

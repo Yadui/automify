@@ -29,7 +29,7 @@ type WaitMode = "duration" | "until_time";
 const WaitWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
-  const metadata = selectedNode.data.metadata || {};
+  const metadata = (selectedNode.data.metadata || {}) as Record<string, any>;
 
   // Migrate from old Delay node format if needed
   const initialMode: WaitMode =

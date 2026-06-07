@@ -22,6 +22,7 @@ import {
   Loader2,
   RefreshCcw,
   ExternalLink,
+  PlugZap,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { usePathname } from "next/navigation";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -63,14 +65,26 @@ const GOOGLE_DRIVE_EVENTS = [
 
 export const GoogleDriveWizard = () => {
   const { state, dispatch } = useEditor();
-  const { nodeConnection } = useNodeConnections();
-  const [step, setStep] = useState<Step>(1);
+  const nodeConnection = useNodeConnections();
+  // `state` is available here; use it directly in lazy initialisers to avoid
+  // TDZ — `selectedNode` alias is declared further down after the useState hooks.
+  const _initStep = (): Step => {
+    const node = state.editor.selectedNode;
+    const meta = node?.data?.metadata as any;
+    return (((node?.data as any)?.configStatus === "active" || meta?.sampleData) ? 4 : 1) as Step;
+  };
+  const [step, _setStep] = useState<Step>(_initStep);
+  const [maxStep, setMaxStep] = useState<Step>(_initStep);
+  const setStep = (next: Step) => { _setStep(next); setMaxStep((prev) => (next > prev ? next : prev) as Step); };
   const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
   const [files, setFiles] = useState<
     { id: string; name: string; mimeType?: string }[]
   >([]);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<any>(() => {
+    const node = state.editor.selectedNode;
+    return (node?.data?.metadata as any)?.sampleData ?? null;
+  });
   const [scopeMessage, setScopeMessage] = useState<string | null>(null);
 
   // Folder creation dialog state
@@ -86,11 +100,27 @@ export const GoogleDriveWizard = () => {
 
   const selectedNode = state.editor.selectedNode;
 
+  const pathname = usePathname();
+  const reconnectHref = (() => {
+    const params = new URLSearchParams({ tab: "configure" });
+    if (selectedNode?.id) params.set("selectedNode", selectedNode.id);
+    const returnTo = `${pathname}?${params.toString()}`;
+    return `/api/auth/connect?${new URLSearchParams({ type: "Google Drive", returnTo }).toString()}`;
+  })();
+
   // Initialize local config from selectedNode on mount or when node changes
   useEffect(() => {
-    if (selectedNode?.data?.metadata) {
-      setLocalConfig(selectedNode.data.metadata);
-    }
+    const meta = (selectedNode?.data?.metadata ?? {}) as any;
+    const status = (selectedNode?.data as any)?.configStatus;
+    // Stop any active polling when switching nodes
+    if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    setIsPolling(false);
+    setPollStartTime(null);
+    setLocalConfig(meta);
+    setTestResult(meta.sampleData ?? null);
+    const restored = ((status === "active" || meta.sampleData) ? 4 : 1) as Step;
+    _setStep(restored);
+    setMaxStep(restored);
   }, [selectedNode?.id]);
 
   // Auto-pass test for new_file and new_folder events
@@ -173,7 +203,7 @@ export const GoogleDriveWizard = () => {
     if (step === 2 && hasFiles === null) {
       const checkFiles = async () => {
         const result = await getGoogleFiles();
-        setHasFiles(result.files && result.files.length > 0);
+        setHasFiles(!!(result.files && result.files.length > 0));
       };
       checkFiles();
     }
@@ -377,7 +407,11 @@ export const GoogleDriveWizard = () => {
           {steps.map((s) => (
             <div
               key={s.id}
-              className="relative z-10 flex flex-col items-center gap-2"
+              className={clsx(
+                "relative z-10 flex flex-col items-center gap-2",
+                s.id <= maxStep && s.id !== step && "cursor-pointer"
+              )}
+              onClick={() => { if (s.id <= maxStep && s.id !== step) setStep(s.id as Step); }}
             >
               <div
                 className={clsx(
@@ -568,14 +602,22 @@ export const GoogleDriveWizard = () => {
                           <p className="text-xs text-muted-foreground">
                             No accessible folders found.
                           </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowCreateFolder(true)}
-                          >
-                            <FolderIcon className="w-4 h-4 mr-2" />
-                            Create New Folder
-                          </Button>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowCreateFolder(true)}
+                            >
+                              <FolderIcon className="w-4 h-4 mr-2" />
+                              Create New Folder
+                            </Button>
+                            <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                              <a href={reconnectHref}>
+                                <PlugZap className="w-3.5 h-3.5" />
+                                Reconnect
+                              </a>
+                            </Button>
+                          </div>
                         </div>
                       )}
                       {folders.length > 0 && (
@@ -624,15 +666,21 @@ export const GoogleDriveWizard = () => {
                         </div>
                       ))}
                       {files.length === 0 && (
-                        <div className="text-center p-6 border-2 border-dashed rounded-xl">
+                        <div className="text-center p-6 border-2 border-dashed rounded-xl space-y-3">
                           <FileIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
                           <p className="text-xs text-muted-foreground">
                             No accessible files found.
                           </p>
-                          <p className="text-[10px] text-muted-foreground/70 mt-1">
+                          <p className="text-[10px] text-muted-foreground/70">
                             Open a file with this app first, or upload a file
                             using Google Picker.
                           </p>
+                          <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                            <a href={reconnectHref}>
+                              <PlugZap className="w-3.5 h-3.5" />
+                              Reconnect Google Drive
+                            </a>
+                          </Button>
                         </div>
                       )}
                     </div>

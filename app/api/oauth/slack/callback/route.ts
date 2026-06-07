@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     }
 
     // Upsert the connection using team.id as providerAccountId
-    await db.connection.upsert({
+    await db.connections.upsert({
       where: {
         userId_provider_providerAccountId: {
           userId: Number(user.id),

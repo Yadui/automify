@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { type ConnectorType } from "@/lib/connectors";
+import { getConnector, type ConnectorType } from "@/lib/connectors";
 import ConnectorLogo from "@/components/global/connector-logo";
 
 interface ConnectionCardProps {
@@ -23,10 +23,12 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({
   type,
   connected,
 }) => {
-  const authUrl = `/api/auth/connect?${new URLSearchParams({
-    type,
-    returnTo: "/connections",
-  }).toString()}`;
+  const connector = getConnector(type);
+  // PAT connectors (no oauth block) go to the manual connection form;
+  // OAuth connectors go through the OAuth redirect handler.
+  const authUrl = connector.oauth
+    ? `/api/auth/connect?${new URLSearchParams({ type, returnTo: "/connections" }).toString()}`
+    : `/connections?${new URLSearchParams({ manualConnector: type, returnTo: "/connections" }).toString()}`;
 
   return (
     <Card className="flex w-full flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center">

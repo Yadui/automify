@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { ensureLocalSessionUser, getLocalSession } from "@/lib/local-auth";
@@ -12,7 +13,14 @@ export type AppAuthUser = {
   source: "authjs" | "local";
 };
 
-export const getAppUser = async (): Promise<AppAuthUser | null> => {
+/**
+ * Returns the currently authenticated user.
+ *
+ * Wrapped in React.cache() so that multiple calls within a single RSC render
+ * (layout + page + server components) share one result — no duplicate DB
+ * queries per request.
+ */
+export const getAppUser = cache(async (): Promise<AppAuthUser | null> => {
   const session = await getServerSession(authOptions);
 
   if (session?.user?.id && session.user.email) {
@@ -30,13 +38,13 @@ export const getAppUser = async (): Promise<AppAuthUser | null> => {
 
   const user = await ensureLocalSessionUser(localSession);
   return {
-    id: user.clerkId,
+    id: user.appId,
     email: user.email,
     name: user.name ?? localSession.name,
     imageUrl: null,
     source: "local",
   };
-};
+});
 
 export const requireAppUser = async () => {
   const user = await getAppUser();

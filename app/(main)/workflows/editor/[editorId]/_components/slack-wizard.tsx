@@ -18,6 +18,8 @@ import {
   MessageSquare,
   Hash,
   Send,
+  PlugZap,
+  Trash2,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -27,8 +29,10 @@ import { parseVariables } from "@/lib/utils";
 import {
   listBotChannels,
   postMessageToSlack,
+  deleteSlackTestMessages,
 } from "../../../../connections/_actions/slack-connection";
 import { useFuzzieStore } from "@/store";
+import { usePathname } from "next/navigation";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -42,6 +46,8 @@ const SLACK_EVENTS = [
 
 export const SlackWizard = () => {
   const { state, dispatch } = useEditor();
+  const pathname = usePathname();
+
   const { nodeConnection } = useNodeConnections();
   const {
     slackChannels,
@@ -51,9 +57,25 @@ export const SlackWizard = () => {
   } = useFuzzieStore();
   const selectedNode = state.editor.selectedNode;
 
-  const [step, setStep] = useState<Step>(1);
+  const reconnectHref = (() => {
+    const params = new URLSearchParams({ tab: "configure" });
+    if (selectedNode?.id) params.set("selectedNode", selectedNode.id);
+    const returnTo = `${pathname}?${params.toString()}`;
+    return `/api/auth/connect?${new URLSearchParams({ type: "Slack", returnTo }).toString()}`;
+  })();
+
+  const _initStep = (): Step => {
+    const meta = selectedNode?.data?.metadata as any;
+    return (((selectedNode?.data as any)?.configStatus === "active" || meta?.sampleData) ? 4 : 1) as Step;
+  };
+  const [step, _setStep] = useState<Step>(_initStep);
+  const [maxStep, setMaxStep] = useState<Step>(_initStep);
+  const setStep = (next: Step) => { _setStep(next); setMaxStep((prev) => (next > prev ? next : prev) as Step); };
   const [loading, setLoading] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<any>(
+    () => (selectedNode?.data?.metadata as any)?.sampleData ?? null
+  );
+  const [testCleanup, setTestCleanup] = useState<"idle" | "deleting" | "deleted" | "error">("idle");
 
   // Form state
   const [config, setConfig] = useState({
@@ -64,12 +86,13 @@ export const SlackWizard = () => {
 
   // Initialize from metadata
   useEffect(() => {
-    if (selectedNode?.data?.metadata) {
-      setConfig((prev) => ({
-        ...prev,
-        ...selectedNode.data.metadata,
-      }));
-    }
+    const meta = (selectedNode?.data?.metadata ?? {}) as any;
+    const status = (selectedNode?.data as any)?.configStatus;
+    setConfig((prev) => ({ ...prev, ...meta }));
+    setTestResult(meta.sampleData ?? null);
+    const restored = ((status === "active" || meta.sampleData) ? 4 : 1) as Step;
+    _setStep(restored);
+    setMaxStep(restored);
   }, [selectedNode?.id]);
 
   // Fetch channels when we have access token
@@ -152,6 +175,7 @@ export const SlackWizard = () => {
   const onTest = async () => {
     setLoading(true);
     setTestResult(null);
+    setTestCleanup("idle");
     try {
       const parsedMessage = parseVariables(
         config.message,
@@ -182,6 +206,8 @@ export const SlackWizard = () => {
           channels: selectedSlackChannels.map((c: any) => c.label).join(", "),
           message: parsedMessage,
           sentAt: new Date().toISOString(),
+          // sentItems carries channel+ts pairs needed for cleanup
+          sentItems: result.sentItems ?? [],
         });
         toast.success("Test message sent to Slack!");
       } else {
@@ -191,6 +217,22 @@ export const SlackWizard = () => {
       toast.error("An error occurred");
     }
     setLoading(false);
+  };
+
+  const handleDeleteTestMessages = async () => {
+    if (!testResult?.sentItems?.length || testCleanup === "deleting") return;
+    setTestCleanup("deleting");
+    const result = await deleteSlackTestMessages(
+      (nodeConnection as any).slackNode?.slackAccessToken,
+      testResult.sentItems
+    );
+    if (result.ok) {
+      setTestCleanup("deleted");
+      toast.success("Test messages deleted from Slack.");
+    } else {
+      setTestCleanup("error");
+      toast.error(result.error ?? "Could not delete test messages");
+    }
   };
 
   const onFinish = () => {
@@ -240,7 +282,11 @@ export const SlackWizard = () => {
           {steps.map((s) => (
             <div
               key={s.id}
-              className="relative z-10 flex flex-col items-center gap-2"
+              className={clsx(
+                "relative z-10 flex flex-col items-center gap-2",
+                s.id <= maxStep && s.id !== step && "cursor-pointer"
+              )}
+              onClick={() => { if (s.id <= maxStep && s.id !== step) setStep(s.id as Step); }}
             >
               <div
                 className={clsx(
@@ -381,12 +427,21 @@ export const SlackWizard = () => {
                     );
                   })}
                   {slackChannels.length === 0 && (
-                    <div className="text-center p-6 border-2 border-dashed rounded-xl">
+                    <div className="text-center p-6 border-2 border-dashed rounded-xl space-y-3">
                       <Hash className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                      <p className="text-xs text-muted-foreground">
-                        No channels found. Make sure the bot is invited to
-                        channels.
+                      <p className="text-xs font-medium text-muted-foreground">
+                        No channels found.
                       </p>
+                      <p className="text-[10px] text-muted-foreground/70">
+                        Make sure the Slack bot is invited to at least one
+                        channel, then reconnect.
+                      </p>
+                      <Button size="sm" variant="outline" className="mt-1 gap-1.5" asChild>
+                        <a href={reconnectHref}>
+                          <PlugZap className="w-3.5 h-3.5" />
+                          Reconnect Slack
+                        </a>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -475,10 +530,30 @@ export const SlackWizard = () => {
                   <span className="text-muted-foreground">Channels:</span>
                   <span className="font-medium">{testResult.channels}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className="font-bold text-green-600">Delivered</span>
+                  {testCleanup === "deleted" ? (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <CheckCircle2 className="w-3 h-3" /> Cleaned up
+                    </span>
+                  ) : (
+                    <span className="font-bold text-green-600">Delivered</span>
+                  )}
                 </div>
+                {testCleanup !== "deleted" && testResult.sentItems?.length > 0 && (
+                  <button
+                    onClick={handleDeleteTestMessages}
+                    disabled={testCleanup === "deleting"}
+                    className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                  >
+                    {testCleanup === "deleting" ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}
+                    {testCleanup === "deleting" ? "Deleting…" : "Delete test messages"}
+                  </button>
+                )}
               </div>
             )}
 

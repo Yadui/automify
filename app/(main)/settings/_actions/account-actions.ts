@@ -31,7 +31,7 @@ export async function exportUserData() {
       },
     });
 
-    const workflows = await db.workflow.findMany({
+    const workflows = await db.workflows.findMany({
       where: { userId },
       select: {
         id: true,
@@ -54,7 +54,7 @@ export async function exportUserData() {
     });
 
     // Connection metadata only - no tokens
-    const connections = await db.connection.findMany({
+    const connections = await db.connections.findMany({
       where: { userId },
       select: {
         id: true,

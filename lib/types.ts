@@ -99,7 +99,25 @@ export type EditorActions =
       payload: {
         element: EditorNode;
       };
-    };
+    }
+  | { type: "CLEAR_RUN_STATUS" }
+  | { type: "SET_LAST_RUN_SUCCESS"; payload: { success: boolean } }
+  | { type: "SET_NODE_RUN_STATUS"; payload: { nodeId: string; status: "pending" | "running" | "success" | "error" } }
+  | { type: "SET_RUNNING"; payload: { running: boolean } }
+  | { type: "SET_SIDEBAR_VISIBILITY"; payload: { open: boolean } }
+  | {
+      type: "OPEN_ADD_MODAL";
+      payload: {
+        position: { x: number; y: number };
+        edgeId?: string;
+        sourceNodeId?: string;
+      };
+    }
+  | { type: "CLOSE_ADD_MODAL" }
+  | { type: "COPY_NODE"; payload: { node: EditorNodeType } }
+  | { type: "PASTE_NODE"; payload: { position: { x: number; y: number } } }
+  | { type: "DUPLICATE_NODE"; payload: { node: EditorNodeType } }
+  | { type: "DELETE_NODE"; payload: { nodeId: string } };
 
 export const nodeMapper: Partial<Record<ConnectionTypes, keyof ConnectionProviderProps>> = {
   Notion: "notionNode",

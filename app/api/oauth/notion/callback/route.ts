@@ -1,32 +1,38 @@
-import { validateRequest } from "@/lib/auth";
 import db from "@/lib/db";
 import { NextResponse } from "next/server";
 import axios from "axios";
+import crypto from "crypto";
 import { getSafeBaseUrl } from "@/lib/utils";
+import { decodeOAuthState, appendOAuthResult } from "@/lib/oauth-redirect";
+
+// Mirror the same AES-256-CBC encryption used in notion-connection.tsx so the
+// token is stored in a format the wizard's decrypt() can read back.
+function encryptToken(text: string): string {
+  const key = process.env.NOTION_ENCRYPTION_KEY!;
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
 
 export async function GET(request: Request) {
-  const { user } = await validateRequest();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  const baseUrl = getSafeBaseUrl(request);
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
-  // Parse returnUrl from state
-  let returnUrl = "/connections";
-  if (state) {
-    try {
-      const decoded = JSON.parse(Buffer.from(state, "base64").toString());
-      returnUrl = decoded.returnUrl || "/connections";
-    } catch {
-      // Invalid state, use default
-    }
+  const decoded = decodeOAuthState(state);
+  const userAppId = decoded.userId ?? null;
+  const returnUrl = decoded.returnTo || "/connections";
+
+  if (!userAppId) {
+    console.error("[notion/callback] No userId in state");
+    return NextResponse.redirect(`${baseUrl}/sign-in?returnTo=${encodeURIComponent(returnUrl)}`);
   }
 
   if (!code) {
-    return NextResponse.json({ error: "No code provided" }, { status: 400 });
+    return NextResponse.redirect(`${baseUrl}${appendOAuthResult(returnUrl, { connectionError: "no_code" })}`);
   }
 
   try {
@@ -34,67 +40,68 @@ export async function GET(request: Request) {
       `${process.env.NOTION_CLIENT_ID}:${process.env.NOTION_CLIENT_SECRET}`
     ).toString("base64");
 
-    const baseUrl = getSafeBaseUrl(request);
     const redirectUri =
       process.env.NOTION_REDIRECT_URI || `${baseUrl}/api/oauth/notion/callback`;
+
+    console.log("[notion/callback] Token exchange redirect_uri:", redirectUri);
+
     const response = await axios.post(
       "https://api.notion.com/v1/oauth/token",
-      {
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: redirectUri,
-      },
-      {
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          "Content-Type": "application/json",
-        },
-      }
+      { grant_type: "authorization_code", code, redirect_uri: redirectUri },
+      { headers: { Authorization: `Basic ${authHeader}`, "Content-Type": "application/json" } }
     );
 
     const tokens = response.data;
+    const encryptedToken = encryptToken(tokens.access_token);
+    const workspaceName = tokens.workspace_name || "Notion Workspace";
+    const workspaceIcon = tokens.workspace_icon || "";
+    const workspaceId   = tokens.workspace_id as string;
 
-    // Record the connection using workspace_id as providerAccountId
-    await db.connection.upsert({
-      where: {
-        userId_provider_providerAccountId: {
-          userId: Number(user.id),
-          provider: "notion",
-          providerAccountId: tokens.workspace_id,
-        },
-      },
-      update: {
-        accessToken: tokens.access_token,
-        metadata: {
-          workspaceName: tokens.workspace_name,
-          workspaceIcon: tokens.workspace_icon,
-          botId: tokens.bot_id,
-          owner: tokens.owner,
-        },
-        status: "active",
-      },
-      create: {
-        userId: Number(user.id),
-        provider: "notion",
-        providerAccountId: tokens.workspace_id,
-        accessToken: tokens.access_token,
-        metadata: {
-          workspaceName: tokens.workspace_name,
-          workspaceIcon: tokens.workspace_icon,
-          botId: tokens.bot_id,
-          owner: tokens.owner,
-        },
-        status: "active",
-      },
-    });
+    const existing = await db.notion.findFirst({ where: { userId: userAppId } });
 
-    // Redirect to original page
+    if (existing) {
+      // Update token + workspace info; leave databaseId and relations intact.
+      await db.notion.update({
+        where: { userId: userAppId },
+        data: {
+          accessToken: encryptedToken,
+          workspaceId,
+          workspaceIcon,
+          workspaceName,
+          connections: {
+            upsert: {
+              where: { userId_type: { userId: userAppId, type: "Notion" } },
+              create: { userId: userAppId, type: "Notion", settings: {} },
+              update: { status: "active" },
+            },
+          },
+        },
+      });
+    } else {
+      // First-time connection — databaseId is required + @unique in the schema.
+      // Use workspaceId as a placeholder; it will be overwritten when the user
+      // selects a real database inside the wizard.
+      await db.notion.create({
+        data: {
+          userId:        userAppId,
+          accessToken:   encryptedToken,
+          workspaceId,
+          workspaceIcon,
+          workspaceName,
+          databaseId:    workspaceId, // placeholder until wizard step 2
+          connections: {
+            create: { userId: userAppId, type: "Notion", settings: {} },
+          },
+        },
+      });
+    }
+
+    console.log("[notion/callback] Connection saved for", userAppId);
     return NextResponse.redirect(`${baseUrl}${returnUrl}`);
-  } catch (error) {
-    console.error("Notion OAuth Callback Error:", error);
-    return NextResponse.json(
-      { error: "Failed to link Notion account" },
-      { status: 500 }
+  } catch (error: any) {
+    console.error("Notion OAuth Callback Error:", error?.response?.data || error);
+    return NextResponse.redirect(
+      `${baseUrl}${appendOAuthResult(returnUrl, { connectionError: "oauth_failed" })}`
     );
   }
 }

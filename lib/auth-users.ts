@@ -37,7 +37,7 @@ export const getOrCreateAuthJsUser = async (input: {
 
   return db.user.create({
     data: {
-      clerkId: authJsAppId({
+      appId: authJsAppId({
         provider: input.provider,
         providerAccountId: input.providerAccountId,
         email,

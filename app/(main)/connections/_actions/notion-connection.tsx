@@ -148,25 +148,51 @@ export const getNotionDatabases = async () => {
   const decryptedToken = decrypt(connection.accessToken);
   const notion = new Client({ auth: decryptedToken });
 
-  const response = await notion.search({
-    filter: {
-      property: "object",
-      value: "database",
-    },
-    sort: {
-      direction: "ascending",
-      timestamp: "last_edited_time",
-    },
+  // Notion API v5 (2025-09-03) no longer returns DatabaseObjectResponse from
+  // notion.search(). Legacy databases (object: "database") only appear as
+  // child_database blocks inside their parent pages.
+  //
+  // Strategy:
+  //   1. Fetch every page the integration can access.
+  //   2. For each page, list its top-level block children in parallel.
+  //   3. Collect any block with type === "child_database".
+  //   4. Deduplicate by block ID (the block ID == the database ID).
+
+  // Step 1 — get all accessible pages
+  const searchResp = await notion.search({
+    filter: { property: "object", value: "page" },
+    sort: { direction: "descending", timestamp: "last_edited_time" },
+    page_size: 50,
   });
 
-  // Format the response for the <MultipleSelector> component
-  return response.results.map((database) => ({
-    value: database.id,
-    label:
-      "title" in database
-        ? database.title[0]?.plain_text || "Untitled Database"
-        : "Untitled Database",
-  }));
+  const pageIds = searchResp.results.map((p) => p.id);
+  if (pageIds.length === 0) return [];
+
+  // Step 2 — list block children for every page, in parallel
+  const childrenResults = await Promise.allSettled(
+    pageIds.map((pageId) =>
+      notion.blocks.children.list({ block_id: pageId, page_size: 100 })
+    )
+  );
+
+  // Step 3 — collect child_database blocks, deduplicate
+  const seen = new Set<string>();
+  const databases: { value: string; label: string }[] = [];
+
+  for (const result of childrenResults) {
+    if (result.status !== "fulfilled") continue;
+    for (const block of result.value.results as any[]) {
+      if (block.type === "child_database" && !seen.has(block.id)) {
+        seen.add(block.id);
+        databases.push({
+          value: block.id,
+          label: block.child_database?.title || "Untitled Database",
+        });
+      }
+    }
+  }
+
+  return databases;
 };
 
 export const getNotionDatabase = async (
@@ -214,5 +240,85 @@ export const onCreateNewPageInDatabase = async (
   });
   if (response) {
     return response;
+  }
+};
+
+// Returns all Notion pages the integration can access — used as parent candidates
+// when the user wants to create a new database.
+export const getNotionPages = async (): Promise<{ id: string; title: string }[]> => {
+  const user = await getAppUser();
+  if (!user) return [];
+
+  const connection = await db.notion.findFirst({ where: { userId: user.id } });
+  if (!connection) return [];
+
+  const decryptedToken = decrypt(connection.accessToken);
+  const notion = new Client({ auth: decryptedToken });
+
+  const response = await notion.search({
+    filter: { property: "object", value: "page" },
+    sort: { direction: "ascending", timestamp: "last_edited_time" },
+    page_size: 50,
+  });
+
+  return response.results.map((page: any) => {
+    let title = "Untitled Page";
+    if ("properties" in page) {
+      const titleProp = Object.values(page.properties as Record<string, any>).find(
+        (p: any) => p.type === "title"
+      ) as any;
+      if (titleProp?.title?.[0]?.plain_text) {
+        title = titleProp.title[0].plain_text;
+      }
+    }
+    return { id: page.id, title };
+  });
+};
+
+// Creates a new Notion database inside the given parent page and returns
+// a descriptor compatible with the wizard's `databases` state.
+export const createNotionDatabase = async (
+  parentPageId: string,
+  title: string
+): Promise<{ id: string; title: string; icon: string } | null> => {
+  const user = await getAppUser();
+  if (!user) return null;
+
+  const connection = await db.notion.findFirst({ where: { userId: user.id } });
+  if (!connection) return null;
+
+  const decryptedToken = decrypt(connection.accessToken);
+  const notion = new Client({ auth: decryptedToken });
+
+  const response = await notion.databases.create({
+    parent: { type: "page_id", page_id: parentPageId },
+    title: [{ type: "text", text: { content: title } }],
+    // Note: 'properties' was removed from CreateDatabaseParameters in SDK v5.
+    // The database will be created with no schema; columns can be added in Notion.
+  });
+
+  return {
+    id: response.id,
+    title: "title" in response ? ((response.title[0] as any)?.plain_text ?? title) : title,
+    icon: "📋",
+  };
+};
+
+// Moves a Notion page to the workspace trash after a test run.
+// Uses the user's stored (encrypted) token so the client never touches it.
+export const deleteNotionTestPage = async (pageId: string): Promise<{ ok: boolean; error?: string }> => {
+  const user = await getAppUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+
+  const connection = await db.notion.findFirst({ where: { userId: user.id } });
+  if (!connection) return { ok: false, error: "Notion not connected" };
+
+  try {
+    const decryptedToken = decrypt(connection.accessToken);
+    const notion = new Client({ auth: decryptedToken });
+    await notion.pages.update({ page_id: pageId, in_trash: true });
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Failed to trash page" };
   }
 };

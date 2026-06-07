@@ -44,10 +44,16 @@ type Step = 1 | 2 | 3 | 4;
 
 export const GmailWizard = () => {
   const { state, dispatch } = useEditor();
-  const { nodeConnection } = useNodeConnections();
+  const nodeConnection = useNodeConnections();
   const selectedNode = state.editor.selectedNode;
 
-  const [step, setStep] = useState<Step>(1);
+  const _initStep = (): Step => {
+    const meta = selectedNode?.data?.metadata as any;
+    return (((selectedNode?.data as any)?.configStatus === "active" || meta?.sampleData) ? 4 : 1) as Step;
+  };
+  const [step, _setStep] = useState<Step>(_initStep);
+  const [maxStep, setMaxStep] = useState<Step>(_initStep);
+  const setStep = (next: Step) => { _setStep(next); setMaxStep((prev) => (next > prev ? next : prev) as Step); };
   const [loading, setLoading] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [isDryRun, setIsDryRun] = useState(true);
@@ -81,16 +87,19 @@ export const GmailWizard = () => {
     fetchEmail();
   }, []);
 
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<any>(
+    () => (selectedNode?.data?.metadata as any)?.sampleData ?? null
+  );
 
   // Initialize from metadata
   useEffect(() => {
-    if (selectedNode?.data?.metadata) {
-      setConfig((prev) => ({
-        ...prev,
-        ...selectedNode.data.metadata,
-      }));
-    }
+    const meta = (selectedNode?.data?.metadata ?? {}) as any;
+    const status = (selectedNode?.data as any)?.configStatus;
+    setConfig((prev) => ({ ...prev, ...meta }));
+    setTestResult(meta.sampleData ?? null);
+    const restored = ((status === "active" || meta.sampleData) ? 4 : 1) as Step;
+    _setStep(restored);
+    setMaxStep(restored);
   }, [selectedNode?.id]);
 
   const updateConfig = (key: string, value: string) => {
@@ -212,7 +221,11 @@ export const GmailWizard = () => {
           {steps.map((s) => (
             <div
               key={s.id}
-              className="relative z-10 flex flex-col items-center gap-2"
+              className={clsx(
+                "relative z-10 flex flex-col items-center gap-2",
+                s.id <= maxStep && s.id !== step && "cursor-pointer"
+              )}
+              onClick={() => { if (s.id <= maxStep && s.id !== step) setStep(s.id as Step); }}
             >
               <div
                 className={clsx(

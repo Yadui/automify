@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Github } from "lucide-react";
+import { Github } from "@/components/icons/brand-icons";
 import Link from "next/link";
 
 export const LocalAuthForm = () => {

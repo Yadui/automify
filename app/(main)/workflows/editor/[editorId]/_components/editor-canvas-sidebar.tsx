@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -24,10 +24,12 @@ import { EditorCanvasTypes, EditorNodeMetadata, EditorNodeType } from "@/lib/typ
 import { useNodeConnections, type ConnectionProviderProps } from "@/providers/connection-provider";
 import { useEditor } from "@/providers/editor-provider";
 import { fetchBotSlackChannels, onDragStart } from "@/lib/editor-utils";
+import { useEditorNodeActions } from "./editor-node-actions-context";
 import { useFuzzieStore } from "@/store";
 import { onCreateNodesEdges } from "../_actions/workflow-connections";
 import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
 import RenderOutputAccordion from "./render-output-accordian";
+import NodeConfigRouter from "./node-config-router";
 
 type Props = {
   nodes: EditorNodeType[];
@@ -60,7 +62,10 @@ const getConnectorRecord = (
   nodeConnection: ConnectionProviderProps
 ): Record<string, unknown> => {
   if (type === "Google Drive" || type === "Gmail" || type === "Google Calendar") {
-    return toRecord(nodeConnection.googleNode);
+    // googleNode is stored as an array; take the first element so that
+    // top-level keys like `accessToken` and `scope` are accessible directly.
+    const items = nodeConnection.googleNode;
+    return toRecord(Array.isArray(items) ? items[0] : items);
   }
   if (type === "Discord") return toRecord(nodeConnection.discordNode);
   if (type === "Notion") return toRecord(nodeConnection.notionNode);
@@ -231,7 +236,8 @@ const StatusBadge = ({ status }: { status: StatusSummary }) => (
 
 const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   const { state } = useEditor();
-  const nodeConnection = useNodeConnections();
+  const { nodeConnection } = useNodeConnections();
+  const nodeActions = useEditorNodeActions();
   const { loadConnections } = nodeConnection;
   const { setSlackChannels } = useFuzzieStore();
   const params = useParams<{ editorId: string }>();
@@ -321,12 +327,37 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   }, [loadConnections, requestedTab]);
 
   useEffect(() => {
-    const slackAccessToken = nodeConnection.slackNode.slackAccessToken;
+    const slackAccessToken = nodeConnection.slackNode?.slackAccessToken;
 
     if (slackAccessToken) {
       fetchBotSlackChannels(slackAccessToken, setSlackChannels);
     }
-  }, [nodeConnection.slackNode.slackAccessToken, setSlackChannels]);
+  }, [nodeConnection.slackNode?.slackAccessToken, setSlackChannels]);
+
+  // Auto-switch to "Add step" tab when the currently selected node's
+  // configStatus transitions → "active" (i.e. the user clicked Save & Continue).
+  // We track both nodeId + previous status so we only react to a real
+  // transition on the SAME node, never to clicking an already-green node.
+  const prevNodeConfigRef = useRef<{ id: string | undefined; status: string | undefined }>({
+    id: undefined,
+    status: undefined,
+  });
+  useEffect(() => {
+    const nodeId = selectedNode?.id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currStatus = (selectedNode?.data as any)?.configStatus as string | undefined;
+    const { id: prevId, status: prevStatus } = prevNodeConfigRef.current;
+    prevNodeConfigRef.current = { id: nodeId, status: currStatus };
+
+    if (
+      nodeId &&
+      nodeId === prevId && // same node – not just clicking a different node
+      prevStatus !== "active" &&
+      currStatus === "active"
+    ) {
+      setActiveTab("add");
+    }
+  }, [selectedNode?.id, selectedNode?.data]);
 
   return (
     <aside className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">
@@ -391,8 +422,10 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
               <Card
                 key={cardKey}
                 draggable
-                className="w-full cursor-grab border-[#e5e5e5] bg-white transition-colors hover:border-[#bdbdbd]"
+                className="w-full cursor-grab select-none border-[#e5e5e5] bg-white transition-colors hover:border-[#bdbdbd]"
+                title="Drag onto canvas or double-click to add"
                 onDragStart={(event) => onDragStart(event, cardKey as EditorCanvasTypes)}
+                onDoubleClick={() => nodeActions.addNode(cardKey as EditorCanvasTypes)}
               >
                 <CardHeader className="flex flex-row items-center gap-3 p-4">
                   <EditorCanvasIconHelper type={cardKey as EditorCanvasTypes} />
@@ -405,69 +438,14 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
             ))}
           </TabsContent>
 
-          <TabsContent value="configure" className="m-0 p-4">
+          <TabsContent value="configure" className="m-0 h-full p-0">
             {!selectedNode ? (
-              <p className="rounded-md border border-dashed border-[#d4d4d4] p-4 text-sm leading-6 text-[#666666]">
+              <p className="m-4 rounded-md border border-dashed border-[#d4d4d4] p-4 text-sm leading-6 text-[#666666]">
                 Select a node on the canvas to configure it.
               </p>
             ) : (
-              <div className="flex flex-col gap-4">
-                <section className="rounded-md border border-[#e5e5e5] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-[#171717]">Account</h3>
-                      <p className="mt-1 text-xs leading-5 text-[#666666]">{accountStatus.detail}</p>
-                    </div>
-                    <StatusBadge status={accountStatus} />
-                  </div>
-                  {nodeConnection.isLoading && (
-                    <p className="mt-3 text-xs text-[#666666]">Loading connected accounts...</p>
-                  )}
-                  {selectedConnection && (
-                    <>
-                      <Separator className="my-4" />
-                      <div className="flex flex-col gap-3">
-                        <p className="text-xs leading-5 text-[#666666]">
-                          {selectedConnection.sharedCredentialType
-                            ? `Uses ${selectedConnection.sharedCredentialType} credentials.`
-                            : selectedConnection.description}
-                        </p>
-                        <Link
-                          href={selectedConnectionHref}
-                          onClick={handleConnectionLinkClick}
-                          className="inline-flex h-9 items-center justify-center rounded-md bg-[#171717] px-3 text-sm font-medium text-white transition-colors hover:bg-[#333333]"
-                        >
-                          {isStartingConnection ? "Starting..." : selectedConnectionLabel}
-                        </Link>
-                      </div>
-                    </>
-                  )}
-                </section>
-
-                <section className="rounded-md border border-[#e5e5e5] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-[#171717]">Action</h3>
-                      <p className="mt-1 text-xs leading-5 text-[#666666]">{actionStatus.detail}</p>
-                    </div>
-                    <StatusBadge status={actionStatus} />
-                  </div>
-                  {canConfigureAction ? (
-                    <div className="mt-4">
-                      <RenderOutputAccordion
-                        state={state}
-                        nodeConnection={nodeConnection}
-                        onUpdateNodeMetadata={onUpdateNodeMetadata}
-                      />
-                    </div>
-                  ) : (
-                    <p className="mt-4 text-sm leading-6 text-[#666666]">
-                      {isConnectorType(selectedTitle)
-                        ? "Open Configure to load this connector's setup fields."
-                        : "This node has no app-specific configuration."}
-                    </p>
-                  )}
-                </section>
+              <div className="h-full">
+                <NodeConfigRouter nodeType={selectedNode.type} />
               </div>
             )}
           </TabsContent>

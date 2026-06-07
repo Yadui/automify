@@ -1,38 +1,39 @@
 import { google } from "googleapis";
+import { validateRequest } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import db from "@/lib/db";
-import { getAppUser } from "@/lib/app-auth";
-import { getOAuthProviderCredentials } from "@/lib/oauth-provider-config";
 
 export async function GET() {
-  const googleCredentials = getOAuthProviderCredentials("google");
-  if (!googleCredentials) {
-    return NextResponse.json({ message: "Google OAuth is not configured" }, { status: 500 });
+  const { user } = await validateRequest();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const connection = await db.connection.findFirst({
+    where: {
+      userId: Number(user.id),
+      provider: "google",
+      status: "active",
+    },
+  });
+
+  if (!connection) {
+    return NextResponse.json(
+      { message: "Google account not connected" },
+      { status: 400 }
+    );
   }
 
   const oauth2Client = new google.auth.OAuth2(
-    googleCredentials.clientId,
-    googleCredentials.clientSecret,
-    process.env.OAUTH2_REDIRECT_URI
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${process.env.BASE_URL}/api/oauth/google/callback`
   );
 
-  const user = await getAppUser();
-  if (!user) {
-    return NextResponse.json({ message: "User not found" }, { status: 401 });
-  }
-
-  const googleConnection = await db.google.findUnique({
-    where: { userId: user.id },
-  });
-
-  if (!googleConnection?.accessToken) {
-    return NextResponse.json({ message: "Google Drive is not connected" }, { status: 404 });
-  }
-
   oauth2Client.setCredentials({
-    access_token: googleConnection.accessToken,
-    refresh_token: googleConnection.refreshToken || undefined,
+    access_token: connection.accessToken,
+    refresh_token: connection.refreshToken || undefined,
   });
 
   const drive = google.drive({
@@ -42,39 +43,46 @@ export async function GET() {
 
   const channelId = uuidv4();
 
-  const startPageTokenRes = await drive.changes.getStartPageToken({});
-  const startPageToken = startPageTokenRes.data.startPageToken;
-  if (startPageToken == null) {
-    throw new Error("startPageToken is unexpectedly null");
-  }
+  try {
+    const startPageTokenRes = await drive.changes.getStartPageToken({});
+    const startPageToken = startPageTokenRes.data.startPageToken;
+    if (startPageToken == null) {
+      throw new Error("startPageToken is unexpectedly null");
+    }
 
-  const listener = await drive.changes.watch({
-    pageToken: startPageToken,
-    supportsAllDrives: true,
-    supportsTeamDrives: true,
-    requestBody: {
-      id: channelId,
-      type: "web_hook",
-      address: `${process.env.NGROK_URI}/api/drive-activity/notification`,
-      kind: "api#channel",
-    },
-  });
-
-  if (listener.status == 200) {
-    //if listener created store its channel id in db
-    const channelStored = await db.user.updateMany({
-      where: {
-        clerkId: user.id,
-      },
-      data: {
-        googleResourceId: listener.data.resourceId,
+    const listener = await drive.changes.watch({
+      pageToken: startPageToken,
+      supportsAllDrives: true,
+      supportsTeamDrives: true,
+      requestBody: {
+        id: channelId,
+        type: "web_hook",
+        address: `${process.env.NGROK_URI}/api/drive-activity/notification`,
+        kind: "api#channel",
       },
     });
 
-    if (channelStored) {
+    if (listener.status === 200) {
+      // Update the user with the resource ID
+      await db.user.update({
+        where: {
+          id: Number(user.id),
+        },
+        data: {
+          googleResourceId: listener.data.resourceId,
+        },
+      });
+
       return new NextResponse("Listening to changes...");
     }
+  } catch (err) {
+    console.error(err);
+    return new NextResponse("Oops! something went wrong, try again", {
+      status: 500,
+    });
   }
 
-  return new NextResponse("Oops! something went wrong, try again");
+  return new NextResponse("Oops! something went wrong, try again", {
+    status: 500,
+  });
 }

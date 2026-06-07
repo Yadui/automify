@@ -30,7 +30,7 @@ export default function ActionsPage() {
         >
           <div className="flex items-center gap-3 mb-4">
             <img
-              src="/gmailLogo.png"
+              src="/gmailLogo.svg"
               alt="Gmail"
               className="w-10 h-10 object-contain"
             />

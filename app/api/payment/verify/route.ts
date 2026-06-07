@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const credits = getPlanCredits(plan);
   await db.user.update({
-    where: { clerkId: user.id },
+    where: { appId: user.id },
     data: {
       tier: plan,
       credits,

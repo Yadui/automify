@@ -130,9 +130,9 @@ const postMessageInSlackChannel = async (
   slackAccessToken: string,
   slackChannel: string,
   content: string
-): Promise<void> => {
+): Promise<{ channel: string; ts: string } | null> => {
   try {
-    await axios.post(
+    const { data } = await axios.post<{ ok: boolean; ts?: string; channel?: string; error?: string }>(
       "https://slack.com/api/chat.postMessage",
       { channel: slackChannel, text: content },
       {
@@ -143,11 +143,16 @@ const postMessageInSlackChannel = async (
       }
     );
     console.log(`Message posted successfully to channel ID: ${slackChannel}`);
+    if (data.ok && data.ts && data.channel) {
+      return { channel: data.channel, ts: data.ts };
+    }
+    return null;
   } catch (error) {
     console.error(
       `Error posting message to Slack channel ${slackChannel}:`,
       error
     );
+    return null;
   }
 };
 
@@ -156,20 +161,49 @@ export const postMessageToSlack = async (
   slackAccessToken: string,
   selectedSlackChannels: Option[],
   content: string
-): Promise<{ message: string }> => {
+): Promise<{ message: string; sentItems?: { channel: string; ts: string }[] }> => {
   if (!content) return { message: "Content is empty" };
   if (!selectedSlackChannels?.length)
     return { message: "Channel not selected" };
 
   try {
-    selectedSlackChannels
-      .map((channel) => channel?.value)
-      .forEach((channel) => {
-        postMessageInSlackChannel(slackAccessToken, channel, content);
-      });
+    const results = await Promise.all(
+      selectedSlackChannels
+        .map((channel) => channel?.value)
+        .map((channel) => postMessageInSlackChannel(slackAccessToken, channel, content))
+    );
+    const sentItems = results.filter((r): r is { channel: string; ts: string } => r !== null);
+    return { message: "Success", sentItems };
   } catch (error) {
     console.error("Error posting message to Slack channel:", error);
+    return { message: "Success" };
   }
+};
 
-  return { message: "Success" };
+// Deletes messages that were created during a test run using their channel + ts identifiers.
+// The bot can only delete messages it posted (requires chat:write scope).
+export const deleteSlackTestMessages = async (
+  slackAccessToken: string,
+  items: { channel: string; ts: string }[]
+): Promise<{ ok: boolean; error?: string }> => {
+  if (!slackAccessToken || !items.length) return { ok: false, error: "Nothing to delete" };
+  try {
+    await Promise.all(
+      items.map(({ channel, ts }) =>
+        axios.post(
+          "https://slack.com/api/chat.delete",
+          { channel, ts },
+          {
+            headers: {
+              Authorization: `Bearer ${slackAccessToken}`,
+              "Content-Type": "application/json;charset=utf-8",
+            },
+          }
+        )
+      )
+    );
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Failed to delete messages" };
+  }
 };
