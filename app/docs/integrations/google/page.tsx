@@ -17,7 +17,7 @@ export default function GoogleIntegrationPage() {
       </div>
       <div className="flex items-center gap-3 mb-4">
         <img
-          src="/googleDrive.png"
+          src="/googleDrive.svg"
           alt="Google"
           className="w-12 h-12 object-contain"
         />
@@ -35,7 +35,7 @@ export default function GoogleIntegrationPage() {
           <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <img
-                src="/googleDrive.png"
+                src="/googleDrive.svg"
                 alt="Google Drive"
                 className="w-6 h-6 object-contain"
               />
@@ -49,7 +49,7 @@ export default function GoogleIntegrationPage() {
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <img
-                src="/gmailLogo.png"
+                src="/gmailLogo.svg"
                 alt="Gmail"
                 className="w-6 h-6 object-contain"
               />

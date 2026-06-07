@@ -5,7 +5,7 @@ import { google } from "googleapis";
 
 const setupGmailClient = async (userId: number) => {
   // Find Google connection
-  const connection = await db.connection.findFirst({
+  const connection = await db.connections.findFirst({
     where: {
       userId: userId,
       provider: "google",
@@ -44,7 +44,7 @@ const setupGmailClient = async (userId: number) => {
   // Handle token refresh events
   oauth2Client.on("tokens", async (tokens) => {
     if (tokens.access_token) {
-      await db.connection.update({
+      await db.connections.update({
         where: { id: connection.id },
         data: {
           accessToken: tokens.access_token,

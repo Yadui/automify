@@ -2,8 +2,11 @@ import Navbar from "@/components/global/navbar";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/global/footer";
 import Pricing from "@/components/global/pricing";
+import { Marquee } from "@/components/magicui/marquee";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getAppUser } from "@/lib/app-auth";
 import {
   ArrowRight,
   Blocks,
@@ -52,13 +55,19 @@ const featureCards = [
 ];
 
 const integrations = [
-  { name: "Google Drive", image: "/googleDrive.png" },
+  { name: "Google Drive", image: "/googleDrive.svg" },
   { name: "Notion", image: "/notion.png" },
   { name: "Slack", image: "/slack.png" },
   { name: "Discord", image: "/discord.png" },
+  { name: "Gmail", image: "/gmailLogo.svg" },
+  { name: "Google Calendar", image: "/googleCalendar.svg" },
+  { name: "Trello", image: "/trello.svg" },
+  { name: "GitHub", image: "/github.svg" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const user = await getAppUser();
+  if (user) redirect("/dashboard");
   return (
     <main className="min-h-screen bg-white text-[#171717]">
       <Navbar />
@@ -142,19 +151,32 @@ export default function Home() {
 
       <section className="mx-auto max-w-[1200px] px-4 py-16 sm:px-8">
         <div className="ds-card-soft flex flex-col gap-8 p-8 md:flex-row md:items-center md:justify-between">
-          <div>
+          <div className="md:max-w-sm md:shrink-0">
             <p className="ds-eyebrow">Connectors</p>
             <h2 className="mt-4 text-2xl font-semibold leading-8 tracking-[-0.96px] text-[#171717]">
               Start with the apps your team already uses.
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {integrations.map((integration) => (
-              <div key={integration.name} className="flex items-center gap-2 rounded-md bg-white px-3 py-2 shadow-[rgb(235,235,235)_0px_0px_0px_1px]">
-                <Image src={integration.image} alt="" width={22} height={22} className="object-contain" />
-                <span className="text-sm font-medium text-[#171717]">{integration.name}</span>
-              </div>
-            ))}
+          <div className="relative w-full min-w-0 md:flex-1">
+            <Marquee pauseOnHover className="[--duration:28s] [--gap:1rem]">
+              {integrations.map((integration) => (
+                <div
+                  key={integration.name}
+                  title={integration.name}
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white shadow-[rgb(235,235,235)_0px_0px_0px_1px]"
+                >
+                  <Image
+                    src={integration.image}
+                    alt={integration.name}
+                    width={28}
+                    height={28}
+                    className="object-contain"
+                  />
+                </div>
+              ))}
+            </Marquee>
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white to-transparent" />
           </div>
         </div>
       </section>

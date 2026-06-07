@@ -58,7 +58,7 @@ export default function SettingsTabs({
     string,
     { name: string; icon?: string; Icon?: React.ComponentType<{ className?: string }> }
   > = {
-    google: { name: "Google", icon: "/googleDrive.png" },
+    google: { name: "Google", icon: "/googleDrive.svg" },
     discord: { name: "Discord", icon: "/discord.png" },
     notion: { name: "Notion", icon: "/notion.png" },
     slack: { name: "Slack", icon: "/slack.png" },

@@ -27,28 +27,69 @@ const getGoogleAuthClient = async () => {
   const credentials = getOAuthProviderCredentials("google");
   if (!credentials) return null;
 
+  // redirect_uri here is only used for auth-code exchange, not for API calls
+  // or token refresh — so it just needs to be a valid registered URI.
+  const redirectUri =
+    process.env.NEXTAUTH_URL
+      ? `${process.env.NEXTAUTH_URL}/api/auth/callback/google`
+      : process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ||
+        process.env.OAUTH2_REDIRECT_URI;
+
   const oauth2Client = new google.auth.OAuth2(
     credentials.clientId,
     credentials.clientSecret,
-    process.env.OAUTH2_REDIRECT_URI ||
-      process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
+    redirectUri
   );
 
   oauth2Client.setCredentials({
     access_token: googleConnection.accessToken,
     refresh_token: googleConnection.refreshToken || undefined,
+    token_type: "Bearer",
   });
 
   return oauth2Client;
 };
 
+// Extracts the real error message buried inside a GaxiosError response body.
+// googleapis wraps API errors in GaxiosError; error.message is just
+// "Request failed with status code 4xx" — the human-readable reason is in
+// error.response.data.error.
+const extractGoogleErrorMessage = (error: unknown): string => {
+  const gaxData = (error as { response?: { data?: { error?: { message?: string; errors?: { message?: string; reason?: string }[] } } } })
+    ?.response?.data?.error;
+  return (
+    gaxData?.message ||
+    gaxData?.errors?.[0]?.message ||
+    (error instanceof Error ? error.message : String(error))
+  );
+};
+
+const extractGoogleErrorReason = (error: unknown): string => {
+  const gaxData = (error as { response?: { data?: { error?: { status?: string; errors?: { reason?: string }[] } } } })
+    ?.response?.data?.error;
+  return gaxData?.errors?.[0]?.reason || gaxData?.status || "";
+};
+
 const toRecoverableMessage = (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("invalid_grant")) {
-    return "Google connection expired. Reconnect Google Drive from Connections.";
+  const message = extractGoogleErrorMessage(error);
+  const reason = extractGoogleErrorReason(error);
+
+  if (message.includes("invalid_grant") || reason === "invalid_grant") {
+    return "Google connection expired. Reconnect from Connections.";
   }
-  if (message.includes("insufficient") || message.includes("invalid_scope")) {
+  if (
+    message.toLowerCase().includes("insufficient") ||
+    reason === "insufficientPermissions" ||
+    message.includes("invalid_scope")
+  ) {
     return "This connection needs additional permissions. Reconnect it from Connections.";
+  }
+  if (
+    message.includes("not been used in project") ||
+    message.includes("is disabled") ||
+    reason === "accessNotConfigured"
+  ) {
+    return "Google Calendar API is not enabled in your Google Cloud project. Go to console.cloud.google.com → APIs & Services → Enable Google Calendar API.";
   }
   return null;
 };
@@ -159,7 +200,7 @@ export const getGoogleFolders = async (): Promise<{
     return { folders };
   } catch (error) {
     const recoverable = toRecoverableMessage(error);
-    return { folders: [], message: recoverable ?? "Unable to load folders." };
+    return { folders: [], message: recoverable ?? extractGoogleErrorMessage(error) };
   }
 };
 
@@ -195,7 +236,7 @@ export const getGoogleFiles = async (): Promise<{
     return { files };
   } catch (error) {
     const recoverable = toRecoverableMessage(error);
-    return { files: [], message: recoverable ?? "Unable to load files." };
+    return { files: [], message: recoverable ?? extractGoogleErrorMessage(error) };
   }
 };
 
@@ -228,7 +269,7 @@ export const createGoogleFolder = async (
     const recoverable = toRecoverableMessage(error);
     return {
       success: false,
-      error: recoverable ?? "Failed to create folder.",
+      error: recoverable ?? extractGoogleErrorMessage(error),
     };
   }
 };
@@ -247,6 +288,127 @@ type DriveStepResult = {
   data?: Record<string, unknown>;
   error?: string;
   currentFileIds?: string[];
+};
+
+// Lists Google Calendars for the authenticated user.
+export const listGoogleCalendars = async (): Promise<{
+  calendars?: { id: string; summary: string }[];
+  message?: string;
+}> => {
+  const auth = await getGoogleAuthClient();
+  if (!auth) return { message: "Google Calendar is not connected." };
+
+  try {
+    const calendar = google.calendar({ version: "v3", auth });
+    const response = await calendar.calendarList.list({ maxResults: 100 });
+    const calendars = (response.data.items ?? []).flatMap((item) =>
+      item.id ? [{ id: item.id, summary: item.summary ?? item.id }] : []
+    );
+    return { calendars };
+  } catch (error) {
+    const recoverable = toRecoverableMessage(error);
+    return { calendars: [], message: recoverable ?? extractGoogleErrorMessage(error) };
+  }
+};
+
+type CalendarStepConfig = {
+  action?: string;
+  calendarId?: string;
+  eventId?: string;
+  summary?: string;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  attendees?: string;
+  defaultReminders?: boolean;
+  [key: string]: unknown;
+};
+
+type CalendarStepResult = {
+  success?: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+};
+
+// Executes a Google Calendar action step (create / update / delete / get event).
+export const testGoogleCalendarStep = async (
+  action: string,
+  config: CalendarStepConfig
+): Promise<CalendarStepResult> => {
+  const auth = await getGoogleAuthClient();
+  if (!auth) return { success: false, error: "Google Calendar is not connected." };
+
+  const calendar = google.calendar({ version: "v3", auth });
+  const calendarId = config.calendarId || "primary";
+
+  const parseDateTime = (raw: string) => {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) throw new Error(`Invalid date: "${raw}"`);
+    return d.toISOString();
+  };
+
+  try {
+    if (action === "create_event") {
+      if (!config.summary) return { success: false, error: "Event title is required." };
+      if (!config.startTime) return { success: false, error: "Start time is required." };
+      if (!config.endTime) return { success: false, error: "End time is required." };
+
+      const attendeeList = config.attendees
+        ? config.attendees
+            .split(",")
+            .map((e) => ({ email: e.trim() }))
+            .filter((a) => a.email)
+        : [];
+
+      const response = await calendar.events.insert({
+        calendarId,
+        requestBody: {
+          summary: config.summary,
+          description: config.description || undefined,
+          start: { dateTime: parseDateTime(config.startTime) },
+          end: { dateTime: parseDateTime(config.endTime) },
+          attendees: attendeeList.length ? attendeeList : undefined,
+          reminders: config.defaultReminders
+            ? { useDefault: true }
+            : { useDefault: false, overrides: [] },
+        },
+      });
+      return { success: true, data: response.data as Record<string, unknown> };
+    }
+
+    if (action === "update_event") {
+      if (!config.eventId) return { success: false, error: "Event ID is required." };
+      const response = await calendar.events.patch({
+        calendarId,
+        eventId: config.eventId,
+        requestBody: {
+          summary: config.summary || undefined,
+          description: config.description || undefined,
+          start: config.startTime ? { dateTime: parseDateTime(config.startTime) } : undefined,
+          end: config.endTime ? { dateTime: parseDateTime(config.endTime) } : undefined,
+        },
+      });
+      return { success: true, data: response.data as Record<string, unknown> };
+    }
+
+    if (action === "delete_event") {
+      if (!config.eventId) return { success: false, error: "Event ID is required." };
+      await calendar.events.delete({ calendarId, eventId: config.eventId });
+      return { success: true, data: { deleted: true, eventId: config.eventId, calendarId } };
+    }
+
+    if (action === "get_event") {
+      if (!config.eventId) return { success: false, error: "Event ID is required." };
+      const response = await calendar.events.get({ calendarId, eventId: config.eventId });
+      return { success: true, data: response.data as Record<string, unknown> };
+    }
+
+    return { success: false, error: `Unknown action: ${action}` };
+  } catch (error) {
+    const recoverable = toRecoverableMessage(error);
+    const rawMessage = extractGoogleErrorMessage(error);
+    return { success: false, error: recoverable ?? rawMessage ?? "Calendar action failed." };
+  }
 };
 
 // Tests / polls a Google Drive trigger step.
@@ -318,6 +480,6 @@ export const testGoogleDriveStep = async (
     return { success: false };
   } catch (error) {
     const recoverable = toRecoverableMessage(error);
-    return { success: false, error: recoverable ?? "Drive test failed." };
+    return { success: false, error: recoverable ?? extractGoogleErrorMessage(error) };
   }
 };

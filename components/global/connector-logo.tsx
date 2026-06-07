@@ -19,9 +19,13 @@ import { cn } from "@/lib/utils";
 
 const connectorLogoImages: Partial<Record<EditorCanvasTypes, string>> = {
   Discord: "/discord.png",
-  "Google Drive": "/googleDrive.png",
+  Gmail: "/gmailLogo.svg",
+  GitHub: "/github.svg",
+  "Google Calendar": "/googleCalendar.svg",
+  "Google Drive": "/googleDrive.svg",
   Notion: "/notion.png",
   Slack: "/slack.png",
+  Trello: "/trello.svg",
 };
 
 type ConnectorLogoProps = {

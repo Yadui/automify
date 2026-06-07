@@ -4,6 +4,7 @@ import { getOAuthProviderCredentials } from "./oauth-provider-config";
 
 type OAuthReturnState = {
   returnTo?: string;
+  userId?: string;
 };
 
 export const getSafeReturnPath = (value: string | null | undefined, fallback = "/connections") => {
@@ -88,8 +89,11 @@ export const buildConnectorOAuthUrl = (
     );
   }
 
-  if (state?.returnTo) {
-    params.set("state", encodeOAuthState({ returnTo: getSafeReturnPath(state.returnTo) }));
+  if (state?.returnTo || state?.userId) {
+    params.set("state", encodeOAuthState({
+      returnTo: state.returnTo ? getSafeReturnPath(state.returnTo) : undefined,
+      userId: state.userId,
+    }));
   }
 
   Object.entries(connector.oauth.extraParams ?? {}).forEach(([key, value]) => {

@@ -1,8 +1,6 @@
-import InfoBar from "@/components/infobar";
-import Sidebar from "@/components/sidebar";
+import MainLayoutShell from "@/components/main-layout-shell";
 import { BillingProvider } from "@/providers/billing-provider";
 import { getAppUser } from "@/lib/app-auth";
-import db from "@/lib/db";
 import { redirect } from "next/navigation";
 import React from "react";
 
@@ -13,22 +11,17 @@ const Layout = async (props: Props) => {
 
   if (!appUser) redirect("/sign-in");
 
-  const billing = await db.user.findUnique({
-    where: { appId: appUser.id },
-    select: { credits: true, tier: true },
-  });
-
+  // Billing data is fetched client-side in BillingProvider (useEffect) so this
+  // layout no longer blocks navigation on an extra DB round-trip.
   return (
-    <BillingProvider initialCredits={billing?.credits} initialTier={billing?.tier}>
-      <div className="flex h-screen overflow-hidden bg-white text-[#171717]">
-        <Sidebar />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <InfoBar authSource={appUser.source} userEmail={appUser.email} userName={appUser.name} />
-          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-8">
-            {props.children}
-          </main>
-        </div>
-      </div>
+    <BillingProvider>
+      <MainLayoutShell
+        authSource={appUser.source}
+        userEmail={appUser.email}
+        userName={appUser.name}
+      >
+        {props.children}
+      </MainLayoutShell>
     </BillingProvider>
   );
 };

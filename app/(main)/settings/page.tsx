@@ -7,8 +7,10 @@ const Settings = async () => {
   const authUser = await getAppUser();
   if (!authUser) return null;
 
-  const user = await db.user.findUnique({ where: { appId: authUser.id } });
-  const displayName = user?.name || authUser.name || authUser.email;
+  // authUser already carries name + email from the cached auth round-trip.
+  // A separate db.user.findUnique for the same row is redundant — ProfileForm
+  // only needs { name, email } which AppAuthUser already provides.
+  const displayName = authUser.name || authUser.email;
   const initial = displayName?.trim()?.[0]?.toUpperCase() || "A";
 
   const updateUserInfo = async (name: string) => {
@@ -54,7 +56,7 @@ const Settings = async () => {
             Add or update your information.
           </p>
           <div className="mt-8">
-            <ProfileForm user={user} onUpdate={updateUserInfo} />
+            <ProfileForm user={authUser} onUpdate={updateUserInfo} />
           </div>
         </div>
       </section>
@@ -63,3 +65,4 @@ const Settings = async () => {
 };
 
 export default Settings;
+

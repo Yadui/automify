@@ -47,4 +47,15 @@ export const NODE_OUTPUTS: Record<
     { label: "To", value: "to", type: "string" },
     { label: "Subject", value: "subject", type: "string" },
   ],
+  // Trigger outputs (issue opened / PR opened) + action outputs (created issue)
+  GitHub: [
+    { label: "Issue / PR Number", value: "number", type: "number" },
+    { label: "Title", value: "title", type: "string" },
+    { label: "Body", value: "body", type: "string" },
+    { label: "URL", value: "url", type: "string" },
+    { label: "Author", value: "author", type: "string" },
+    { label: "State", value: "state", type: "string" },
+    { label: "Repository", value: "repo", type: "string" },
+    { label: "Labels", value: "labels", type: "string[]" },
+  ],
 };

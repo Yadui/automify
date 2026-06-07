@@ -28,6 +28,7 @@ export type Editor = {
   clipboard: EditorNode | null;
   runStatus: Record<string, "pending" | "running" | "success" | "error">;
   lastRunSuccess: boolean;
+  isRunning: boolean;
   metadata?: {
     name: string;
     description: string;
@@ -77,6 +78,7 @@ const initialEditorState: EditorState["editor"] = {
   clipboard: null,
   runStatus: {},
   lastRunSuccess: false,
+  isRunning: false,
   metadata: {
     name: "Untitled Workflow",
     description: "",
@@ -353,6 +355,14 @@ const editorReducer = (
         editor: {
           ...state.editor,
           lastRunSuccess: action.payload.success,
+        },
+      };
+    case "SET_RUNNING":
+      return {
+        ...state,
+        editor: {
+          ...state.editor,
+          isRunning: action.payload.running,
         },
       };
     default:

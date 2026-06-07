@@ -101,19 +101,10 @@ export type EditorActions =
       };
     }
   | { type: "CLEAR_RUN_STATUS" }
-  | {
-      type: "SET_LAST_RUN_SUCCESS";
-      payload: {
-        success: boolean;
-      };
-    }
-  | {
-      type: "SET_NODE_RUN_STATUS";
-      payload: {
-        nodeId: string;
-        status: "pending" | "running" | "success" | "error";
-      };
-    }
+  | { type: "SET_LAST_RUN_SUCCESS"; payload: { success: boolean } }
+  | { type: "SET_NODE_RUN_STATUS"; payload: { nodeId: string; status: "pending" | "running" | "success" | "error" } }
+  | { type: "SET_RUNNING"; payload: { running: boolean } }
+  | { type: "SET_SIDEBAR_VISIBILITY"; payload: { open: boolean } }
   | {
       type: "OPEN_ADD_MODAL";
       payload: {
@@ -123,36 +114,10 @@ export type EditorActions =
       };
     }
   | { type: "CLOSE_ADD_MODAL" }
-  | {
-      type: "SET_SIDEBAR_VISIBILITY";
-      payload: {
-        open: boolean;
-      };
-    }
-  | {
-      type: "COPY_NODE";
-      payload: {
-        node: EditorNode;
-      };
-    }
-  | {
-      type: "PASTE_NODE";
-      payload: {
-        position: { x: number; y: number };
-      };
-    }
-  | {
-      type: "DUPLICATE_NODE";
-      payload: {
-        node: EditorNode;
-      };
-    }
-  | {
-      type: "DELETE_NODE";
-      payload: {
-        nodeId: string;
-      };
-    };
+  | { type: "COPY_NODE"; payload: { node: EditorNodeType } }
+  | { type: "PASTE_NODE"; payload: { position: { x: number; y: number } } }
+  | { type: "DUPLICATE_NODE"; payload: { node: EditorNodeType } }
+  | { type: "DELETE_NODE"; payload: { nodeId: string } };
 
 export const nodeMapper: Partial<Record<ConnectionTypes, keyof ConnectionProviderProps>> = {
   Notion: "notionNode",

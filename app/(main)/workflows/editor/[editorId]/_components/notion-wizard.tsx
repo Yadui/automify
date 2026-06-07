@@ -1,8 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useEditor } from "@/providers/editor-provider";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   CheckCircle2,
   Settings2,
@@ -15,6 +17,9 @@ import {
   Database,
   Plus,
   RefreshCw,
+  PlugZap,
+  BookOpen,
+  Trash2,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -25,6 +30,9 @@ import { CONNECTIONS } from "@/lib/constant";
 import {
   getNotionConnection,
   getNotionDatabases,
+  getNotionPages,
+  createNotionDatabase,
+  deleteNotionTestPage,
   onCreateNewPageInDatabase,
 } from "../../../../connections/_actions/notion-connection";
 
@@ -41,10 +49,29 @@ const NOTION_EVENTS = [
 export const NotionWizard = () => {
   const { state, dispatch } = useEditor();
   const selectedNode = state.editor.selectedNode;
+  const pathname = usePathname();
 
-  const [step, setStep] = useState<Step>(1);
+  // URL that sends the user back through Notion OAuth so they can (re)select
+  // which databases to share with the integration.
+  const reconnectHref = (() => {
+    const params = new URLSearchParams({ tab: "configure" });
+    if (selectedNode?.id) params.set("selectedNode", selectedNode.id);
+    const returnTo = `${pathname}?${params.toString()}`;
+    return `/api/auth/connect?${new URLSearchParams({ type: "Notion", returnTo }).toString()}`;
+  })();
+
+  const _initStep = (): Step => {
+    const meta = selectedNode?.data?.metadata as any;
+    return (((selectedNode?.data as any)?.configStatus === "active" || meta?.sampleData) ? 5 : 1) as Step;
+  };
+  const [step, _setStep] = useState<Step>(_initStep);
+  const [maxStep, setMaxStep] = useState<Step>(_initStep);
+  const setStep = (next: Step) => { _setStep(next); setMaxStep((prev) => (next > prev ? next : prev) as Step); };
   const [loading, setLoading] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<any>(
+    () => (selectedNode?.data?.metadata as any)?.sampleData ?? null
+  );
+  const [testCleanup, setTestCleanup] = useState<"idle" | "deleting" | "deleted" | "error">("idle");
   const [notionInfo, setNotionInfo] = useState<{
     accessToken: string;
     workspaceName: string;
@@ -57,6 +84,14 @@ export const NotionWizard = () => {
   >([]);
   const [loadingDatabases, setLoadingDatabases] = useState(false);
 
+  // Create-new-database inline form
+  const [showCreateDb, setShowCreateDb] = useState(false);
+  const [pages, setPages] = useState<{ id: string; title: string }[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [newDbName, setNewDbName] = useState("Automify Data");
+  const [newDbParentId, setNewDbParentId] = useState("");
+  const [creatingDb, setCreatingDb] = useState(false);
+
   // Form state
   const [config, setConfig] = useState({
     event: "create_item",
@@ -67,12 +102,13 @@ export const NotionWizard = () => {
 
   // Initialize from metadata
   useEffect(() => {
-    if (selectedNode?.data?.metadata) {
-      setConfig((prev) => ({
-        ...prev,
-        ...selectedNode.data.metadata,
-      }));
-    }
+    const meta = (selectedNode?.data?.metadata ?? {}) as any;
+    const status = (selectedNode?.data as any)?.configStatus;
+    setConfig((prev) => ({ ...prev, ...meta }));
+    setTestResult(meta.sampleData ?? null);
+    const restored = ((status === "active" || meta.sampleData) ? 5 : 1) as Step;
+    _setStep(restored);
+    setMaxStep(restored);
   }, [selectedNode?.id]);
 
   // Fetch Notion connection on step 1
@@ -131,6 +167,45 @@ export const NotionWizard = () => {
       toast.error("Failed to refresh databases");
     }
     setLoadingDatabases(false);
+  };
+
+  // Fetch accessible pages when the user opens the "Create New Database" panel
+  const handleShowCreateDb = async () => {
+    setShowCreateDb(true);
+    if (pages.length > 0) return; // already loaded
+    setLoadingPages(true);
+    try {
+      const result = await getNotionPages();
+      setPages(result);
+      if (result.length > 0) setNewDbParentId(result[0].id);
+    } catch {
+      toast.error("Failed to load Notion pages");
+    }
+    setLoadingPages(false);
+  };
+
+  const handleCreateDb = async () => {
+    if (!newDbParentId) {
+      toast.error("Please select a parent page first");
+      return;
+    }
+    if (!newDbName.trim()) {
+      toast.error("Please enter a database name");
+      return;
+    }
+    setCreatingDb(true);
+    try {
+      const result = await createNotionDatabase(newDbParentId, newDbName.trim());
+      if (!result) throw new Error("Creation failed");
+      const newDb = { id: result.id, title: result.title, icon: result.icon };
+      setDatabases((prev) => [newDb, ...prev]);
+      selectDatabase(newDb);
+      setShowCreateDb(false);
+      toast.success(`Database "${result.title}" created!`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create database");
+    }
+    setCreatingDb(false);
   };
 
   const updateConfig = (key: string, value: any) => {
@@ -196,6 +271,7 @@ export const NotionWizard = () => {
   const onTest = async () => {
     setLoading(true);
     setTestResult(null);
+    setTestCleanup("idle");
     try {
       const parsedContent = parseVariables(
         config.content,
@@ -240,6 +316,19 @@ export const NotionWizard = () => {
       toast.error(e?.message || "An error occurred");
     }
     setLoading(false);
+  };
+
+  const handleDeleteTestEntry = async () => {
+    if (!testResult?.pageId || testCleanup === "deleting") return;
+    setTestCleanup("deleting");
+    const result = await deleteNotionTestPage(testResult.pageId);
+    if (result.ok) {
+      setTestCleanup("deleted");
+      toast.success("Test entry moved to Notion trash.");
+    } else {
+      setTestCleanup("error");
+      toast.error(result.error ?? "Could not delete test entry");
+    }
   };
 
   const onFinish = () => {
@@ -287,7 +376,11 @@ export const NotionWizard = () => {
           {steps.map((s) => (
             <div
               key={s.id}
-              className="relative z-10 flex flex-col items-center gap-2"
+              className={clsx(
+                "relative z-10 flex flex-col items-center gap-2",
+                s.id <= maxStep && s.id !== step && "cursor-pointer"
+              )}
+              onClick={() => { if (s.id <= maxStep && s.id !== step) setStep(s.id as Step); }}
             >
               <div
                 className={clsx(
@@ -336,25 +429,6 @@ export const NotionWizard = () => {
                   )
                 )}
               </div>
-
-              {notionInfo && (
-                <div className="p-4 rounded-xl border bg-green-500/5 border-green-500/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-lg">
-                      {notionInfo.workspaceIcon || "📚"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {notionInfo.workspaceName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Connected workspace
-                      </p>
-                    </div>
-                    <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />
-                  </div>
-                </div>
-              )}
             </div>
             <Button
               className="w-full"
@@ -397,58 +471,160 @@ export const NotionWizard = () => {
                 <div className="flex justify-center p-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
+              ) : showCreateDb ? (
+                /* ── Create-database inline form ──────────────── */
+                <div className="border rounded-xl p-4 space-y-4 bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-medium">Create a new Notion database</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Database name</Label>
+                    <Input
+                      value={newDbName}
+                      onChange={(e) => setNewDbName(e.target.value)}
+                      placeholder="e.g. Automify Data"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Create inside page</Label>
+                    {loadingPages ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Loading pages…
+                      </div>
+                    ) : pages.length === 0 ? (
+                      <p className="text-[10px] text-destructive">
+                        No shared pages found. Reconnect Notion and share at least one page so we can place the database.
+                      </p>
+                    ) : (
+                      <select
+                        value={newDbParentId}
+                        onChange={(e) => setNewDbParentId(e.target.value)}
+                        className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        {pages.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      disabled={creatingDb || loadingPages || pages.length === 0}
+                      onClick={handleCreateDb}
+                    >
+                      {creatingDb ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      {creatingDb ? "Creating…" : "Create Database"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowCreateDb(false)}
+                      disabled={creatingDb}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
               ) : databases.length === 0 ? (
+                /* ── Empty state ─────────────────────────────── */
                 <div className="text-center p-6 border-2 border-dashed rounded-xl space-y-3">
                   <Database className="w-8 h-8 mx-auto text-muted-foreground/50" />
-                  <p className="text-xs text-muted-foreground">
-                    No databases found in your workspace.
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/70">
-                    Make sure you've shared at least one database with this
-                    integration during OAuth.
-                  </p>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      No databases found in your workspace.
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1 max-w-[260px] mx-auto">
+                      A <strong>Notion database</strong> is a table, board, or list — not a regular page.
+                      You can create one below, or reconnect and share an existing database.
+                    </p>
+                  </div>
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      onClick={handleShowCreateDb}
+                      className="gap-1.5"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      Create New Database
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      asChild
+                    >
+                      <a href={reconnectHref}>
+                        <PlugZap className="w-3.5 h-3.5" />
+                        Reconnect Notion
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2">
-                  {databases.map((db) => (
-                    <div
-                      key={db.id}
-                      role="button"
-                      tabIndex={0}
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        selectDatabase(db);
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        selectDatabase(db);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
+                /* ── Database list ───────────────────────────── */
+                <div className="space-y-2">
+                  <div className="grid gap-2 max-h-[260px] overflow-y-auto pr-1">
+                    {databases.map((db) => (
+                      <div
+                        key={db.id}
+                        role="button"
+                        tabIndex={0}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
                           e.preventDefault();
                           selectDatabase(db);
-                        }
-                      }}
-                      className={clsx(
-                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none",
-                        config.databaseId === db.id
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "hover:bg-muted"
-                      )}
-                    >
-                      <span className="text-lg pointer-events-none">
-                        {db.icon}
-                      </span>
-                      <span className="truncate text-sm pointer-events-none">
-                        {db.title}
-                      </span>
-                      {config.databaseId === db.id && (
-                        <CheckCircle2 className="w-4 h-4 ml-auto shrink-0" />
-                      )}
-                    </div>
-                  ))}
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          selectDatabase(db);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectDatabase(db);
+                          }
+                        }}
+                        className={clsx(
+                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors select-none",
+                          config.databaseId === db.id
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "hover:bg-muted"
+                        )}
+                      >
+                        <span className="text-lg pointer-events-none">
+                          {db.icon}
+                        </span>
+                        <span className="truncate text-sm pointer-events-none">
+                          {db.title}
+                        </span>
+                        {config.databaseId === db.id && (
+                          <CheckCircle2 className="w-4 h-4 ml-auto shrink-0" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleShowCreateDb}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Create new database
+                  </button>
                 </div>
               )}
             </div>
@@ -619,10 +795,30 @@ export const NotionWizard = () => {
                     {testResult.pageId?.slice(0, 12)}...
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className="font-bold text-green-600">Created</span>
+                  {testCleanup === "deleted" ? (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <CheckCircle2 className="w-3 h-3" /> Cleaned up
+                    </span>
+                  ) : (
+                    <span className="font-bold text-green-600">Created</span>
+                  )}
                 </div>
+                {testCleanup !== "deleted" && (
+                  <button
+                    onClick={handleDeleteTestEntry}
+                    disabled={testCleanup === "deleting"}
+                    className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                  >
+                    {testCleanup === "deleting" ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}
+                    {testCleanup === "deleting" ? "Deleting…" : "Delete test entry"}
+                  </button>
+                )}
               </div>
             )}
 

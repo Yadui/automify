@@ -17,8 +17,8 @@ export const oauthProviderDefinitions: OAuthProviderDefinition[] = [
   {
     id: "github",
     name: "GitHub",
-    clientIdEnv: ["AUTH_GITHUB_ID", "GITHUB_CLIENT_ID"],
-    clientSecretEnv: ["AUTH_GITHUB_SECRET", "GITHUB_CLIENT_SECRET"],
+    clientIdEnv: ["AUTH_GITHUB_ID", "AUTH_GITHUB_CLIENT_ID", "GITHUB_CLIENT_ID"],
+    clientSecretEnv: ["AUTH_GITHUB_SECRET", "AUTH_GITHUB_CLIENT_SECRET", "GITHUB_CLIENT_SECRET"],
   },
 ];
 

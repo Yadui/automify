@@ -1,12 +1,23 @@
+import { AccordionContent } from "@/components/ui/accordion";
 import { ConnectionProviderProps } from "@/providers/connection-provider";
 import { EditorState } from "@/providers/editor-provider";
-import { EditorNodeMetadata, nodeMapper } from "@/lib/types";
-import type { ConnectorRelationInput, ConnectorSettingsInput, ConnectorType } from "@/lib/connectors";
-import React from "react";
-import { EditorCanvasDefaultCardTypes } from "@/lib/constant";
+import { nodeMapper } from "@/lib/types";
+import React, { useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { onContentChange } from "@/lib/editor-utils";
+import GoogleFileDetails from "./google-file-details";
 import GoogleDriveFiles from "./google-drive-files";
 import ActionButton from "./action-button";
-import ConnectorSettingsFields from "./connector-settings-fields";
+import { getFileMetaData } from "@/app/(main)/connections/_actions/google-connection";
+import axios from "axios";
+import { toast } from "sonner";
 
 export interface Option {
   value: string;
@@ -17,121 +28,107 @@ export interface Option {
   /** Group the options by providing key. */
   [key: string]: string | boolean | undefined;
 }
-type MappedNodeTitle = keyof typeof nodeMapper;
-
-const isMappedNodeTitle = (title: string): title is MappedNodeTitle =>
-  title in nodeMapper;
+interface GroupOption {
+  [key: string]: Option[];
+}
 
 type Props = {
   nodeConnection: ConnectionProviderProps;
   newState: EditorState;
+  file: any;
+  setFile: (file: any) => void;
   selectedSlackChannels: Option[];
   setSelectedSlackChannels: (value: Option[]) => void;
-  googleIsListening: boolean;
-  onUpdateNodeMetadata: (nodeId: string, metadata: Partial<EditorNodeMetadata>) => void;
 };
 
 const ContentBasedOnTitle = ({
   nodeConnection,
   newState,
+  file,
+  setFile,
   selectedSlackChannels,
   setSelectedSlackChannels,
-  googleIsListening,
-  onUpdateNodeMetadata,
 }: Props) => {
   const { selectedNode } = newState.editor;
   const title = selectedNode.data.title;
 
-  if (!isMappedNodeTitle(title)) return <p>Not connected</p>;
+  useEffect(() => {
+    const reqGoogle = async () => {
+      const response: { data: { message: { files: any } } } = await axios.get(
+        "/api/drive"
+      );
+      if (response) {
+        console.log(response.data.message.files[0]);
+        toast.message("Fetched File");
+        setFile(response.data.message.files[0]);
+      } else {
+        toast.error("Something went wrong");
+      }
+    };
+    reqGoogle();
+  }, []);
 
-  const mappedNodeKey = nodeMapper[title];
-  if (!mappedNodeKey) return <p>Not connected</p>;
-
-  const nodeConnectionType = nodeConnection[mappedNodeKey];
+  // @ts-ignore
+  const nodeConnectionType: any = nodeConnection[nodeMapper[title]];
   if (!nodeConnectionType) return <p>Not connected</p>;
-
-  const selectedConnectorType = title as ConnectorType;
-  const operationKind =
-    EditorCanvasDefaultCardTypes[selectedNode.type]?.type === "Trigger" ? "trigger" : "action";
-  const functionalSettings = selectedNode.data.metadata.settings ?? {};
-  const functionalRelations = selectedNode.data.metadata.relations ?? [];
-
-  const updateFunctionalSettings = (settings: ConnectorSettingsInput) => {
-    onUpdateNodeMetadata(selectedNode.id, { settings });
-
-    if (title === "Google Drive" || title === "Gmail" || title === "Google Calendar") {
-      nodeConnection.setGoogleNode((prev) => ({ ...prev, settings }));
-    } else if (title === "Trello") {
-      nodeConnection.setTrelloNode((prev) => ({ ...prev, settings }));
-    } else if (title === "GitHub") {
-      nodeConnection.setGitHubNode((prev) => ({ ...prev, settings }));
-    } else if (title === "Slack") {
-      nodeConnection.setSlackNode((prev) => ({ ...prev, ...settings }));
-    } else if (title === "Discord") {
-      nodeConnection.setDiscordNode((prev) => ({ ...prev, ...settings }));
-    } else if (title === "Notion") {
-      nodeConnection.setNotionNode((prev) => ({ ...prev, ...settings }));
-    }
-  };
-  const updateFunctionalRelations = (relations: ConnectorRelationInput[]) => {
-    onUpdateNodeMetadata(selectedNode.id, { relations });
-
-    if (title === "Google Drive" || title === "Gmail" || title === "Google Calendar") {
-      nodeConnection.setGoogleNode((prev) => ({ ...prev, relations }));
-    } else if (title === "Trello") {
-      nodeConnection.setTrelloNode((prev) => ({ ...prev, relations }));
-    } else if (title === "GitHub") {
-      nodeConnection.setGitHubNode((prev) => ({ ...prev, relations }));
-    }
-  };
 
   const isConnected =
     title === "Google Drive"
-      ? !!nodeConnection.googleNode.accessToken || !!nodeConnection.googleNode.settings?.accessToken
-      : title === "Slack"
-      ? !!nodeConnection.slackNode.slackAccessToken
-      : title === "Discord"
-      ? !!nodeConnection.discordNode.webhookURL
-      : title === "Notion"
-      ? !!nodeConnection.notionNode.accessToken
-      : title === "Gmail" || title === "Google Calendar"
-      ? !!nodeConnection.googleNode.accessToken || !!nodeConnection.googleNode.settings?.accessToken
-      : title === "Trello"
-      ? !!nodeConnection.trelloNode.token || !!nodeConnection.trelloNode.settings?.token
-      : title === "GitHub"
-      ? !!nodeConnection.githubNode.accessToken || !!nodeConnection.githubNode.settings?.accessToken
-      : false;
+      ? !nodeConnection.isLoading
+      : !!nodeConnectionType[
+          `${
+            title === "Slack"
+              ? "slackAccessToken"
+              : title === "Discord"
+              ? "webhookURL"
+              : title === "Notion"
+              ? "accessToken"
+              : ""
+          }`
+        ];
+
+  if (!isConnected) return <p>Not connected</p>;
 
   return (
-    <div className="flex flex-col gap-4">
-      {title === "Discord" && isConnected && (
-        <div className="rounded-md border border-[#e5e5e5] p-3">
-          <p className="text-sm font-medium text-[#171717]">{nodeConnection.discordNode.webhookName}</p>
-          <p className="mt-1 text-xs text-[#666666]">{nodeConnection.discordNode.guildName}</p>
+    <>
+      <Card>
+        {title === "Discord" && (
+          <CardHeader>
+            <CardTitle>{nodeConnectionType.webhookName}</CardTitle>
+            <CardDescription>{nodeConnectionType.guildName}</CardDescription>
+          </CardHeader>
+        )}
+        <div className="flex flex-col gap-3 px-6 py-3 pb-20">
+          <p>{title === "Notion" ? "Values to be stored" : "Message"}</p>
+
+          <Input
+            type="text"
+            value={nodeConnectionType.content}
+            onChange={(event) => onContentChange(nodeConnection, title, event)}
+          />
+
+          {JSON.stringify(file) !== "{}" && title !== "Google Drive" && (
+            <Card className="w-full">
+              <CardContent className="px-2 py-3">
+                <div className="flex flex-col gap-4">
+                  <CardDescription>Drive File</CardDescription>
+                  <div className="flex flex-wrap gap-2">
+                    <GoogleFileDetails file={file} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {title === "Google Drive" && <GoogleDriveFiles fileId="" />}
+          <ActionButton
+            currentService={title}
+            nodeConnection={nodeConnection}
+            channels={selectedSlackChannels}
+            setChannels={setSelectedSlackChannels}
+          />
         </div>
-      )}
-
-      <ConnectorSettingsFields
-        type={selectedConnectorType}
-        kind={operationKind}
-        settings={functionalSettings}
-        onChange={updateFunctionalSettings}
-        relations={functionalRelations}
-        onRelationsChange={updateFunctionalRelations}
-      />
-
-      {title === "Google Drive" && isConnected && (
-        <GoogleDriveFiles initialIsListening={googleIsListening} />
-      )}
-      {isConnected && (
-        <ActionButton
-          currentService={title}
-          nodeConnection={nodeConnection}
-          channels={selectedSlackChannels}
-          setChannels={setSelectedSlackChannels}
-        />
-      )}
-    </div>
+      </Card>
+    </>
   );
 };
 

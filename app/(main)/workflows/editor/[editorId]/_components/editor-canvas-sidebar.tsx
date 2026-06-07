@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -24,6 +24,7 @@ import { EditorCanvasTypes, EditorNodeMetadata, EditorNodeType } from "@/lib/typ
 import { useNodeConnections, type ConnectionProviderProps } from "@/providers/connection-provider";
 import { useEditor } from "@/providers/editor-provider";
 import { fetchBotSlackChannels, onDragStart } from "@/lib/editor-utils";
+import { useEditorNodeActions } from "./editor-node-actions-context";
 import { useFuzzieStore } from "@/store";
 import { onCreateNodesEdges } from "../_actions/workflow-connections";
 import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
@@ -61,7 +62,10 @@ const getConnectorRecord = (
   nodeConnection: ConnectionProviderProps
 ): Record<string, unknown> => {
   if (type === "Google Drive" || type === "Gmail" || type === "Google Calendar") {
-    return toRecord(nodeConnection.googleNode);
+    // googleNode is stored as an array; take the first element so that
+    // top-level keys like `accessToken` and `scope` are accessible directly.
+    const items = nodeConnection.googleNode;
+    return toRecord(Array.isArray(items) ? items[0] : items);
   }
   if (type === "Discord") return toRecord(nodeConnection.discordNode);
   if (type === "Notion") return toRecord(nodeConnection.notionNode);
@@ -232,7 +236,8 @@ const StatusBadge = ({ status }: { status: StatusSummary }) => (
 
 const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   const { state } = useEditor();
-  const nodeConnection = useNodeConnections();
+  const { nodeConnection } = useNodeConnections();
+  const nodeActions = useEditorNodeActions();
   const { loadConnections } = nodeConnection;
   const { setSlackChannels } = useFuzzieStore();
   const params = useParams<{ editorId: string }>();
@@ -322,12 +327,37 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   }, [loadConnections, requestedTab]);
 
   useEffect(() => {
-    const slackAccessToken = nodeConnection.slackNode.slackAccessToken;
+    const slackAccessToken = nodeConnection.slackNode?.slackAccessToken;
 
     if (slackAccessToken) {
       fetchBotSlackChannels(slackAccessToken, setSlackChannels);
     }
-  }, [nodeConnection.slackNode.slackAccessToken, setSlackChannels]);
+  }, [nodeConnection.slackNode?.slackAccessToken, setSlackChannels]);
+
+  // Auto-switch to "Add step" tab when the currently selected node's
+  // configStatus transitions → "active" (i.e. the user clicked Save & Continue).
+  // We track both nodeId + previous status so we only react to a real
+  // transition on the SAME node, never to clicking an already-green node.
+  const prevNodeConfigRef = useRef<{ id: string | undefined; status: string | undefined }>({
+    id: undefined,
+    status: undefined,
+  });
+  useEffect(() => {
+    const nodeId = selectedNode?.id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currStatus = (selectedNode?.data as any)?.configStatus as string | undefined;
+    const { id: prevId, status: prevStatus } = prevNodeConfigRef.current;
+    prevNodeConfigRef.current = { id: nodeId, status: currStatus };
+
+    if (
+      nodeId &&
+      nodeId === prevId && // same node – not just clicking a different node
+      prevStatus !== "active" &&
+      currStatus === "active"
+    ) {
+      setActiveTab("add");
+    }
+  }, [selectedNode?.id, selectedNode?.data]);
 
   return (
     <aside className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">
@@ -392,8 +422,10 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
               <Card
                 key={cardKey}
                 draggable
-                className="w-full cursor-grab border-[#e5e5e5] bg-white transition-colors hover:border-[#bdbdbd]"
+                className="w-full cursor-grab select-none border-[#e5e5e5] bg-white transition-colors hover:border-[#bdbdbd]"
+                title="Drag onto canvas or double-click to add"
                 onDragStart={(event) => onDragStart(event, cardKey as EditorCanvasTypes)}
+                onDoubleClick={() => nodeActions.addNode(cardKey as EditorCanvasTypes)}
               >
                 <CardHeader className="flex flex-row items-center gap-3 p-4">
                   <EditorCanvasIconHelper type={cardKey as EditorCanvasTypes} />

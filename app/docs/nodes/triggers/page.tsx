@@ -29,7 +29,7 @@ export default function TriggersPage() {
         >
           <div className="flex items-center gap-3 mb-4">
             <img
-              src="/googleDrive.png"
+              src="/googleDrive.svg"
               alt="Google Drive"
               className="w-10 h-10 object-contain"
             />

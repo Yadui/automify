@@ -8,6 +8,8 @@ import { GoogleDriveWizard } from "./google-drive-wizard";
 import { SlackWizard } from "./slack-wizard";
 import { DiscordWizard } from "./discord-wizard";
 import { NotionWizard } from "./notion-wizard";
+import { GoogleCalendarWizard } from "./google-calendar-wizard";
+import { GitHubWizard } from "./github-wizard";
 import ConditionWizard from "./core-primitives/condition-wizard";
 import WaitWizard from "./core-primitives/wait-wizard";
 import HttpRequestWizard from "./core-primitives/http-request-wizard";
@@ -24,12 +26,14 @@ type Props = {
 
 const WIZARDS: Partial<Record<string, React.ComponentType>> = {
   // App connectors
-  Email: GmailWizard,
-  Gmail: GmailWizard,
-  "Google Drive": GoogleDriveWizard,
-  Slack: SlackWizard,
-  Discord: DiscordWizard,
-  Notion: NotionWizard,
+  Email:             GmailWizard,
+  Gmail:             GmailWizard,
+  "Google Drive":    GoogleDriveWizard,
+  "Google Calendar": GoogleCalendarWizard,
+  Slack:             SlackWizard,
+  Discord:           DiscordWizard,
+  Notion:            NotionWizard,
+  GitHub:            GitHubWizard,
 
   // Logic & utility
   Condition: ConditionWizard,

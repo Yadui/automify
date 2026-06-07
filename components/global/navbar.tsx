@@ -18,7 +18,7 @@ const Navbar = async () => {
       <nav className="hidden md:block">
         <ul className="flex items-center gap-8 list-none text-sm font-medium text-[#171717]">
           <li>
-            <Link href="#product" className="transition-colors hover:text-[#0072f5]">Product</Link>
+            <Link href="/docs" className="transition-colors hover:text-[#0072f5]">Docs</Link>
           </li>
           <li>
             <Link href="#workflow" className="transition-colors hover:text-[#0072f5]">Workflow</Link>

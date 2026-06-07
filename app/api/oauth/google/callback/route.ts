@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     }
 
     // Upsert the connection
-    await db.connection.upsert({
+    await db.connections.upsert({
       where: {
         userId_provider_providerAccountId: {
           userId: Number(user.id),
