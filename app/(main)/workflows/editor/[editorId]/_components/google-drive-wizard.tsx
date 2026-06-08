@@ -98,6 +98,11 @@ export const GoogleDriveWizard = () => {
   // Local config state for immediate UI feedback
   const [localConfig, setLocalConfig] = useState<any>({});
 
+  // Polling state for test (declared here so all hooks are ordered before any useEffect)
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollStartTime, setPollStartTime] = useState<string | null>(null);
+  const pollingRef = React.useRef<NodeJS.Timeout | null>(null);
+
   const selectedNode = state.editor.selectedNode;
 
   const pathname = usePathname();
@@ -264,11 +269,6 @@ export const GoogleDriveWizard = () => {
       });
     }
   };
-
-  // Polling state for test
-  const [isPolling, setIsPolling] = useState(false);
-  const [pollStartTime, setPollStartTime] = useState<string | null>(null);
-  const pollingRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup polling on unmount
   useEffect(() => {

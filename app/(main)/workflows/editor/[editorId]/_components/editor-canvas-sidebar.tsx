@@ -28,7 +28,6 @@ import { useEditorNodeActions } from "./editor-node-actions-context";
 import { useFuzzieStore } from "@/store";
 import { onCreateNodesEdges } from "../_actions/workflow-connections";
 import EditorCanvasIconHelper from "./editor-canvas-card-icon-hepler";
-import RenderOutputAccordion from "./render-output-accordian";
 import NodeConfigRouter from "./node-config-router";
 
 type Props = {
