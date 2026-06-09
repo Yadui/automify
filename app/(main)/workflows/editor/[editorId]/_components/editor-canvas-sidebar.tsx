@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -233,6 +233,28 @@ const StatusBadge = ({ status }: { status: StatusSummary }) => (
   </Badge>
 );
 
+// Reads ?tab=configure from the URL and activates the Configure tab + loads
+// connections on mount / URL change. Isolated so the useSearchParams() call
+// sits under a <Suspense> boundary (Next.js 15 requirement).
+const TabParamsSyncer = ({
+  setActiveTab,
+}: {
+  setActiveTab: (tab: string) => void;
+}) => {
+  const { nodeConnection } = useNodeConnections();
+  const { loadConnections } = nodeConnection;
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+
+  useEffect(() => {
+    if (requestedTab !== "configure") return;
+    setActiveTab("configure");
+    void loadConnections();
+  }, [loadConnections, requestedTab, setActiveTab]);
+
+  return null;
+};
+
 const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   const { state } = useEditor();
   const { nodeConnection } = useNodeConnections();
@@ -241,9 +263,7 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   const { setSlackChannels } = useFuzzieStore();
   const params = useParams<{ editorId: string }>();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const requestedTab = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(requestedTab === "configure" ? "configure" : "add");
+  const [activeTab, setActiveTab] = useState("add");
   const [isStartingConnection, setIsStartingConnection] = useState(false);
 
   const selectedNode = state.editor.selectedNode.id ? state.editor.selectedNode : null;
@@ -320,12 +340,6 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
   };
 
   useEffect(() => {
-    if (requestedTab !== "configure") return;
-    setActiveTab("configure");
-    void loadConnections();
-  }, [loadConnections, requestedTab]);
-
-  useEffect(() => {
     const slackAccessToken = nodeConnection.slackNode?.slackAccessToken;
 
     if (slackAccessToken) {
@@ -360,6 +374,9 @@ const EditorCanvasSidebar = ({ nodes, onUpdateNodeMetadata }: Props) => {
 
   return (
     <aside className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">
+      <Suspense fallback={null}>
+        <TabParamsSyncer setActiveTab={setActiveTab} />
+      </Suspense>
       <div className="border-b border-[#e5e5e5] p-4">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#e5e5e5] bg-[#fafafa] text-[#171717]">

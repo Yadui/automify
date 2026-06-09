@@ -10,7 +10,7 @@ import {
 } from "@/lib/connectors";
 import { useEditor } from "@/providers/editor-provider";
 import { useSearchParams } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   Connection,
@@ -126,12 +126,29 @@ const emptySelectedNode: EditorNodeType = {
   type: "Trigger",
 };
 
-const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasProps) => {
-  const { dispatch, state } = useEditor();
-  const isRunning = state.editor.isRunning;
+// Reads ?selectedNode=<id> from the URL and restores the selected node in
+// EditorContext on mount / URL change. Isolated in its own component so the
+// useSearchParams() call sits under a <Suspense> boundary (Next.js 15 requirement).
+const SearchParamsSyncer = ({ nodes }: { nodes: EditorNodeType[] }) => {
+  const { dispatch } = useEditor();
   const searchParams = useSearchParams();
   const selectedNodeId = searchParams.get("selectedNode");
   const restoredSelectedNodeId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedNodeId || restoredSelectedNodeId.current === selectedNodeId) return;
+    const node = nodes.find((n) => n.id === selectedNodeId);
+    if (!node) return;
+    restoredSelectedNodeId.current = selectedNodeId;
+    dispatch({ type: "SELECTED_ELEMENT", payload: { element: node } });
+  }, [dispatch, nodes, selectedNodeId]);
+
+  return null;
+};
+
+const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasProps) => {
+  const { dispatch, state } = useEditor();
+  const isRunning = state.editor.isRunning;
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance>();
@@ -659,24 +676,12 @@ const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasPr
     });
   }, [state.editor.elements]);
 
-  useEffect(() => {
-    if (!selectedNodeId || restoredSelectedNodeId.current === selectedNodeId) return;
-
-    const node = nodes.find((currentNode) => currentNode.id === selectedNodeId);
-    if (!node) return;
-
-    restoredSelectedNodeId.current = selectedNodeId;
-    dispatch({
-      type: "SELECTED_ELEMENT",
-      payload: {
-        element: node,
-      },
-    });
-  }, [dispatch, nodes, selectedNodeId]);
-
   return (
     <EditorNodeActionsProvider value={nodeActions}>
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <Suspense fallback={null}>
+          <SearchParamsSyncer nodes={nodes} />
+        </Suspense>
         <EditorHeader />
         <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1 overflow-hidden">
         <ResizablePanel defaultSize={70}>
