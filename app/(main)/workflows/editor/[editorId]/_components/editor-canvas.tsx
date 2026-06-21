@@ -320,7 +320,7 @@ const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasPr
         position,
         data: {
           title: type,
-          description: EditorCanvasDefaultCardTypes[type].description,
+          description: EditorCanvasDefaultCardTypes[type as keyof typeof EditorCanvasDefaultCardTypes]?.description ?? "",
           completed: false,
           current: false,
           metadata: {},
@@ -550,7 +550,7 @@ const EditorCanvas = ({ workflowId, initialNodes, initialEdges }: EditorCanvasPr
         dragging: false,
         data: {
           title: type,
-          description: EditorCanvasDefaultCardTypes[type].description,
+          description: EditorCanvasDefaultCardTypes[type as keyof typeof EditorCanvasDefaultCardTypes]?.description ?? "",
           completed: false,
           current: false,
           metadata: {},

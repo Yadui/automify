@@ -152,7 +152,7 @@ const EditorCanvasCardSingle = ({
 
   return (
     <div className="group relative">
-      {EditorCanvasDefaultCardTypes[data.type].type !== "Trigger" && (
+      {EditorCanvasDefaultCardTypes[data.type as keyof typeof EditorCanvasDefaultCardTypes]?.type !== "Trigger" && (
         <CustomHandle
           type="target"
           position={Position.Top}
