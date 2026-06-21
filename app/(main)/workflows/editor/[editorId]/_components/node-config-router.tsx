@@ -19,6 +19,7 @@ import EndWizard from "./core-primitives/end-wizard";
 import TriggerWizard from "./core-primitives/trigger-wizard";
 import DataTransformWizard from "./core-primitives/data-transform-wizard";
 import KVStorageWizard from "./core-primitives/kv-storage-wizard";
+import AIWizard from "./core-primitives/ai-wizard";
 
 type Props = {
   nodeType: EditorCanvasTypes | string;
@@ -36,18 +37,19 @@ const WIZARDS: Partial<Record<string, React.ComponentType>> = {
   GitHub:            GitHubWizard,
 
   // Logic & utility
-  Condition: ConditionWizard,
-  Wait: WaitWizard,
-  "HTTP Request": HttpRequestWizard,
-  Webhook: WebhookWizard,
-  "Custom Webhook": WebhookWizard,
-  "Toast Message": ToastWizard,
-  End: EndWizard,
-
-  // Legacy node types kept renderable for older workflows
-  Trigger: TriggerWizard,
-  "Data Transform": DataTransformWizard,
+  AI:                  AIWizard,
+  Condition:           ConditionWizard,
+  Wait:                WaitWizard,
+  "HTTP Request":      HttpRequestWizard,
+  Webhook:             WebhookWizard,
+  "Custom Webhook":    WebhookWizard,
+  "Toast Message":     ToastWizard,
+  End:                 EndWizard,
+  "Data Transform":    DataTransformWizard,
   "Key-Value Storage": KVStorageWizard,
+
+  // Legacy
+  Trigger: TriggerWizard,
 };
 
 const NodeConfigRouter = ({ nodeType }: Props) => {

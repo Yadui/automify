@@ -40,7 +40,7 @@ const WaitWizard = () => {
 
   // Duration mode
   const [durationValue, setDurationValue] = useState(
-    metadata.durationValue || metadata.value || "5",
+    String(metadata.durationValue ?? metadata.value ?? "5"),
   );
   const [durationUnit, setDurationUnit] = useState<string>(
     metadata.durationUnit || metadata.unit || "minutes",

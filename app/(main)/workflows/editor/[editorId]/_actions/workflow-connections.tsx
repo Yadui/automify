@@ -24,7 +24,6 @@ export const onCreateNodesEdges = async (
 };
 
 export const onFlowPublish = async (workflowId: string, state: boolean) => {
-  console.log(state);
   const user = await getAppUser();
 
   if (!user) {

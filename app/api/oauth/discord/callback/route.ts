@@ -44,11 +44,6 @@ export async function GET(request: Request) {
       process.env.DISCORD_REDIRECT_URI ||
       `${baseUrl}/api/oauth/discord/callback`;
 
-    console.log("[discord/callback] Token exchange →", {
-      clientId,
-      redirectUri,
-      codeLength: code.length,
-    });
 
     const params = new URLSearchParams({
       client_id: clientId,

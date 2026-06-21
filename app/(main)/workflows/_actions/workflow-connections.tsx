@@ -325,18 +325,39 @@ export const onCreateWorkflowLog = async (
   status: string,
   message: string,
   results?: any,
+  durationMs?: number,
 ) => {
   try {
-    // WorkflowLog model not in schema — silently skip
-    console.log("[WorkflowLog]", { workflowId, status, message, results });
+    const user = await getAppUser();
+    if (!user) return;
+    await db.workflowLog.create({
+      data: {
+        workflowId,
+        userId: user.id,
+        status,
+        message,
+        results: results ?? [],
+        durationMs: durationMs ?? null,
+      },
+    });
   } catch (error) {
     console.error("Error creating workflow log:", error);
   }
 };
 
-export const onGetWorkflowLogs = async (_workflowId: string) => {
-  // WorkflowLog model not in schema — return empty list
-  return [];
+export const onGetWorkflowLogs = async (workflowId: string) => {
+  try {
+    const user = await getAppUser();
+    if (!user) return [];
+    return await db.workflowLog.findMany({
+      where: { workflowId, userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+  } catch (error) {
+    console.error("Error fetching workflow logs:", error);
+    return [];
+  }
 };
 
 export const onSearchWorkflows = async (query: string) => {

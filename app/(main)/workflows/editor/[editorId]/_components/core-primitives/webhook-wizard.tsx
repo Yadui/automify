@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEditor } from "@/providers/editor-provider";
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Loader2, RefreshCw, Shield, Webhook, Zap } from "lucide-react";
+import { Copy, RefreshCw, Shield, Webhook, Zap } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 // Managed webhook providers (future-ready)
@@ -64,7 +64,6 @@ const WebhookWizard = () => {
   const [event, setEvent] = useState(metadata.event || "");
 
   const [testPayload, setTestPayload] = useState<any>(null);
-  const [isWaiting, setIsWaiting] = useState(false);
 
   // Generate IDs on mount if not present
   useEffect(() => {
@@ -76,7 +75,12 @@ const WebhookWizard = () => {
     }
   }, []);
 
-  const webhookUrl = `https://api.automify.app/hooks/${webhookId}`;
+  // Use the actual app domain for the webhook URL
+  const baseUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_URL || "https://automify.vercel.app";
+  const webhookUrl = `${baseUrl}/api/webhooks/${webhookId}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -101,29 +105,29 @@ const WebhookWizard = () => {
   };
 
   const handleSimulateReceive = () => {
-    setIsWaiting(true);
-    setTimeout(() => {
-      setTestPayload({
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(requireSecret ? { "x-webhook-secret": "[REDACTED]" } : {}),
+    // Generate a realistic sample payload so downstream nodes
+    // can map variables — no fake async needed
+    const payload = {
+      method: allowPost ? "POST" : "GET",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "WebhookSender/1.0",
+        ...(requireSecret ? { "x-webhook-secret": "[YOUR_SECRET]" } : {}),
+      },
+      query: {},
+      body: {
+        event: "custom.event",
+        data: {
+          id: "obj_" + uuidv4().slice(0, 8),
+          email: "user@example.com",
+          name: "John Doe",
         },
-        query: {},
-        body: {
-          event: mode === "managed" ? event : "custom.event",
-          data: {
-            id: "obj_" + uuidv4().slice(0, 8),
-            email: "test@example.com",
-            name: "John Doe",
-          },
-          timestamp: new Date().toISOString(),
-        },
-        receivedAt: new Date().toISOString(),
-      });
-      setIsWaiting(false);
-      toast.success("Webhook payload received");
-    }, 1500);
+        timestamp: new Date().toISOString(),
+      },
+      receivedAt: new Date().toISOString(),
+    };
+    setTestPayload(payload);
+    toast.success("Sample payload generated — save to activate this webhook");
   };
 
   const handleSave = () => {
@@ -376,14 +380,12 @@ const WebhookWizard = () => {
       <div className="flex gap-2">
         <Button
           onClick={handleSimulateReceive}
-          disabled={isWaiting}
           variant="secondary"
           className="flex-1"
         >
-          {isWaiting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isWaiting ? "Waiting..." : "Simulate Event"}
+          Generate Sample Payload
         </Button>
-        <Button onClick={handleSave} disabled={!testPayload} className="flex-1">
+        <Button onClick={handleSave} disabled={!webhookId} className="flex-1">
           Save
         </Button>
       </div>

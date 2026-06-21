@@ -26,7 +26,7 @@ export type Editor = {
   sourceNodeId?: string;
   isSidebarOpen: boolean;
   clipboard: EditorNode | null;
-  runStatus: Record<string, "pending" | "running" | "success" | "error">;
+  runStatus: Record<string, "pending" | "running" | "success" | "error" | "skipped">;
   lastRunSuccess: boolean;
   isRunning: boolean;
   metadata?: {

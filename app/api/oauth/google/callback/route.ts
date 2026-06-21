@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     await db.connections.upsert({
       where: {
         userId_provider_providerAccountId: {
-          userId: Number(user.id),
+          userId: String(user.id),
           provider: "google",
           providerAccountId: googleUser.permissionId,
         },
@@ -60,15 +60,19 @@ export async function GET(request: Request) {
       update: {
         accessToken: tokens.access_token!,
         refreshToken: tokens.refresh_token || undefined,
-        expiresAt: tokens.expiry_date
-          ? new Date(tokens.expiry_date)
-          : undefined,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
         scopes: tokens.scope || undefined,
+        // Also store in settings for legacy compatibility
+        settings: {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          email: googleUser.emailAddress,
+          name: googleUser.displayName,
+        },
         metadata: {
           email: googleUser.emailAddress,
           name: googleUser.displayName,
           picture: googleUser.photoLink,
-          // Maintain legacy keys for compatibility
           emailAddress: googleUser.emailAddress,
           displayName: googleUser.displayName,
           photoLink: googleUser.photoLink,
@@ -76,20 +80,24 @@ export async function GET(request: Request) {
         status: "active",
       },
       create: {
-        userId: Number(user.id),
+        userId: String(user.id),
+        type: "Google Drive",
         provider: "google",
         providerAccountId: googleUser.permissionId,
         accessToken: tokens.access_token!,
         refreshToken: tokens.refresh_token,
-        expiresAt: tokens.expiry_date
-          ? new Date(tokens.expiry_date)
-          : undefined,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
         scopes: tokens.scope,
+        settings: {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          email: googleUser.emailAddress,
+          name: googleUser.displayName,
+        },
         metadata: {
           email: googleUser.emailAddress,
           name: googleUser.displayName,
           picture: googleUser.photoLink,
-          // Maintain legacy keys for compatibility
           emailAddress: googleUser.emailAddress,
           displayName: googleUser.displayName,
           photoLink: googleUser.photoLink,

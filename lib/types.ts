@@ -43,7 +43,12 @@ export type EditorCanvasTypes =
   | "Google Calendar"
   | "Trigger"
   | "Action"
-  | "Wait";
+  | "Wait"
+  | "HTTP Request"
+  | "Data Transform"
+  | "Key-Value Storage"
+  | "Toast Message"
+  | "End";
 
 export type EditorNodeMetadata = Record<string, unknown> & {
   defaultAction?: string;
@@ -102,7 +107,7 @@ export type EditorActions =
     }
   | { type: "CLEAR_RUN_STATUS" }
   | { type: "SET_LAST_RUN_SUCCESS"; payload: { success: boolean } }
-  | { type: "SET_NODE_RUN_STATUS"; payload: { nodeId: string; status: "pending" | "running" | "success" | "error" } }
+  | { type: "SET_NODE_RUN_STATUS"; payload: { nodeId: string; status: "pending" | "running" | "success" | "error" | "skipped" } }
   | { type: "SET_RUNNING"; payload: { running: boolean } }
   | { type: "SET_SIDEBAR_VISIBILITY"; payload: { open: boolean } }
   | {

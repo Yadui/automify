@@ -129,10 +129,11 @@ const SmartInput = ({
   // Replaces {{nodeId.var}} with <span class="chip">...</span>
   const renderHTML = (rawValue: string) => {
     if (!rawValue) return "";
+    const str = typeof rawValue === "string" ? rawValue : String(rawValue);
+
     // Regex to match {{nodeId.variable}}
     // We strictly match the pattern we insert: {{uuid.word}}
-
-    return rawValue.replace(/\{\{([^.]+)\.([^}]+)\}\}/g, (match, nId, vKey) => {
+    return str.replace(/\{\{([^.]+)\.([^}]+)\}\}/g, (match, nId, vKey) => {
       const nTitle = nodeMap.get(nId) || "Unknown Node";
       return `<span contenteditable="false" data-variable="${match}" class="inline-flex items-center mx-1 px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-default select-none border border-primary/20 align-middle whitespace-nowrap gap-1"><span class="opacity-70">${nTitle}</span><span class="opacity-30">·</span><span>${vKey}</span></span>`;
     });

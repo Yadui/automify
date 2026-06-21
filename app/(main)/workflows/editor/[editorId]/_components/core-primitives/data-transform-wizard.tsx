@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -15,12 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useEditor } from "@/providers/editor-provider";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { ArrowRightLeft } from "lucide-react";
 import SmartInput from "../smart-input";
+import { parseVariables } from "@/lib/utils";
 
 // Helper for safe JSON parsing
 const safeJsonParse = (str: string, fallback: any = {}) => {
@@ -38,31 +37,39 @@ const DataTransformWizard = () => {
 
   const [operation, setOperation] = useState(metadata.operation || "merge");
   const [inputData, setInputData] = useState(metadata.inputData || "");
-  const [param1, setParam1] = useState(metadata.param1 || ""); // e.g., keys to pick/omit, or merge source 2
-  const [result, setResult] = useState<any>(null);
+  const [param1, setParam1] = useState(metadata.param1 || "");
+  // Restore result from saved sampleData so re-opening sidebar doesn't reset it
+  const [result, setResult] = useState<any>(() => metadata.sampleData ?? null);
 
   const handleTest = () => {
     try {
-      const input = safeJsonParse(inputData);
+      // Resolve {{node.var}} references before parsing
+      const resolvedInput = parseVariables(inputData, state.editor.elements);
+      const resolvedParam = parseVariables(param1, state.editor.elements);
+
+      const input = safeJsonParse(resolvedInput);
       let output: any;
 
       switch (operation) {
-        case "pick":
-          const pickKeys = param1.split(",").map((k: string) => k.trim());
+        case "pick": {
+          const pickKeys = resolvedParam.split(",").map((k: string) => k.trim());
           output = pickKeys.reduce((obj: any, key: string) => {
-            if (input.hasOwnProperty(key)) obj[key] = input[key];
+            if (Object.prototype.hasOwnProperty.call(input, key)) obj[key] = input[key];
             return obj;
           }, {});
           break;
-        case "omit":
-          const omitKeys = param1.split(",").map((k: string) => k.trim());
+        }
+        case "omit": {
+          const omitKeys = resolvedParam.split(",").map((k: string) => k.trim());
           output = { ...input };
           omitKeys.forEach((key: string) => delete output[key]);
           break;
-        case "merge":
-          const mergeSource = safeJsonParse(param1);
+        }
+        case "merge": {
+          const mergeSource = safeJsonParse(resolvedParam);
           output = { ...input, ...mergeSource };
           break;
+        }
         case "json_stringify":
           output = JSON.stringify(input);
           break;
@@ -100,6 +107,9 @@ const DataTransformWizard = () => {
                   inputData,
                   param1,
                   eventLabel: `Transform: ${operation}`,
+                  // Persist result so downstream nodes can reference it
+                  // and so re-opening the sidebar restores the preview
+                  sampleData: result && !result.error ? { result } : node.data.metadata?.sampleData,
                 },
               },
             };
@@ -121,7 +131,7 @@ const DataTransformWizard = () => {
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label>Operation</Label>
-            <Select value={operation} onValueChange={setOperation}>
+            <Select value={operation} onValueChange={(v) => { setOperation(v); setResult(null); }}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -136,12 +146,12 @@ const DataTransformWizard = () => {
           </div>
 
           <div className="grid gap-2">
-            <Label>Input Data (JSON)</Label>
+            <Label>Input Data (JSON or variable)</Label>
             <SmartInput
               type="textarea"
               value={inputData}
               onChange={setInputData}
-              placeholder='{"foo": "bar"}'
+              placeholder='{"foo": "bar"} or use / to insert a variable'
               className="font-mono text-xs h-24"
             />
           </div>
@@ -178,7 +188,8 @@ const DataTransformWizard = () => {
           <ArrowRightLeft className="mr-2 h-4 w-4" />
           Test Transform
         </Button>
-        <Button onClick={handleSave} disabled={!result} className="flex-1">
+        {/* Save is always available — test is optional */}
+        <Button onClick={handleSave} disabled={!operation} className="flex-1">
           Save Configuration
         </Button>
       </div>
@@ -186,7 +197,9 @@ const DataTransformWizard = () => {
       {result && (
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle className="text-sm">Result</CardTitle>
+            <CardTitle className={`text-sm ${result.error ? "text-red-600" : "text-green-600"}`}>
+              {result.error ? "✗ Error" : "✓ Result"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-60">

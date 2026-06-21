@@ -6,6 +6,7 @@ import {
   onCreateNodesEdges,
   onFlowPublish,
 } from "../_actions/workflow-connections";
+import { onCreateWorkflowLog } from "../../../_actions/workflow-connections";
 import { testGoogleDriveStep } from "../../../../connections/_actions/google-connection";
 import { sendGmail } from "../../../../connections/_actions/google-gmail-action";
 import {
@@ -46,6 +47,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { useEditor } from "@/providers/editor-provider";
 import { parseVariables } from "@/lib/utils";
+import { evaluateCondition } from "@/lib/workflow-utils";
 import { format } from "date-fns";
 import axios from "axios";
 
@@ -126,14 +128,14 @@ const EditorHeader = () => {
     if (state.editor.elements.length === 0) return;
 
     const timer = setTimeout(() => {
-      console.log("Auto-saving workflow...");
       onFlowAutomation(true);
-    }, 3000); // 3 seconds debounce
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [state.editor.elements, state.editor.edges, onFlowAutomation]);
 
   // Get execution order (BFS from trigger nodes)
+  // Returns ordered node IDs — condition branching is handled during execution
   const getExecutionOrder = useCallback(() => {
     const nodes = state.editor.elements;
     const edges = state.editor.edges;
@@ -142,13 +144,12 @@ const EditorHeader = () => {
     const targetIds = new Set(edges.map((e) => e.target));
     let triggerNodes = nodes.filter((n) => !targetIds.has(n.id));
 
-    // If no start nodes found (cycle) or specific Trigger node exists, prioritize Trigger types
     if (triggerNodes.length === 0 && nodes.length > 0) {
       triggerNodes = nodes.filter(
         (n) =>
           (n.type as string) === "Trigger" ||
           n.data.type === "Trigger" ||
-          (n.type as string) === "Onboarding Trigger", // Future proofing
+          (n.type as string) === "Onboarding Trigger",
       );
     }
 
@@ -162,22 +163,49 @@ const EditorHeader = () => {
       visited.add(nodeId);
       order.push(nodeId);
 
-      // Find connected nodes
       const outgoingEdges = edges.filter((e) => e.source === nodeId);
       outgoingEdges.forEach((e) => {
-        if (!visited.has(e.target)) {
-          queue.push(e.target);
-        }
+        if (!visited.has(e.target)) queue.push(e.target);
       });
     }
 
     return order;
   }, [state.editor.elements, state.editor.edges]);
 
+  /**
+   * Given a Condition node result, collect all node IDs that are downstream
+   * of its FALSE branch so they can be skipped during execution.
+   */
+  const getFalseBranchIds = useCallback((conditionNodeId: string): Set<string> => {
+    const edges = state.editor.edges;
+    const nodes = state.editor.elements;
+
+    // Edges labelled "false" (or the second outgoing edge by convention)
+    const outgoing = edges.filter((e) => e.source === conditionNodeId);
+    if (outgoing.length < 2) return new Set(); // no false branch
+
+    // Convention: edge with label "false" or sourceHandle "false"
+    const falseEdge =
+      outgoing.find((e) => (e as any).label === "false" || (e as any).sourceHandle === "false") ||
+      outgoing[1]; // fallback: second edge is false branch
+
+    const skipped = new Set<string>();
+    const queue = [falseEdge.target];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (skipped.has(id)) continue;
+      skipped.add(id);
+      edges.filter((e) => e.source === id).forEach((e) => queue.push(e.target));
+    }
+    return skipped;
+  }, [state.editor.edges, state.editor.elements]);
+
   const onRunWorkflow = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current = controller;
     const { signal } = controller;
+    const runStart = Date.now();
+    const workflowId = pathname.split("/").pop()!;
 
     dispatch({ type: "SET_RUNNING", payload: { running: true } });
     dispatch({ type: "CLEAR_RUN_STATUS" });
@@ -201,12 +229,19 @@ const EditorHeader = () => {
       let allSuccess = true;
       let stopped = false;
       let currentElements = [...state.editor.elements];
+      const skippedNodes = new Set<string>(); // nodes skipped due to condition false branch
 
       for (const nodeId of executionOrder) {
         if (signal.aborted || stopped) { stopped = true; break; }
 
         const node = currentElements.find((n) => n.id === nodeId);
         if (!node) { console.warn(`[Run] Node ${nodeId} not found in elements`); continue; }
+
+        // Skip nodes that are on a condition's false branch
+        if (skippedNodes.has(nodeId)) {
+          dispatch({ type: "SET_NODE_RUN_STATUS", payload: { nodeId, status: "skipped" } });
+          continue;
+        }
 
         const nodeName = node.data?.title || node.data?.type || "Unknown Node";
         const nodeType: string = node.data?.type || "Unknown";
@@ -384,6 +419,113 @@ const EditorHeader = () => {
               waitedMs:     waitMs,
             };
             toast.success(`Wait complete`);
+          } else if (nodeType === "AI") {
+            const metadata = (node.data?.metadata || {}) as Record<string, any>;
+            const resolvedInput = parseVariables(metadata.input || "", currentElements);
+            if (!resolvedInput) throw new Error("AI node: input is empty");
+            toast.info(`AI: running ${metadata.operation || "task"}...`);
+            const res = await fetch("/api/ai", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                operation:          metadata.operation || "generate",
+                provider:           metadata.provider  || "groq",
+                model:              metadata.model     || "fast",
+                input:              resolvedInput,
+                extractFields:      metadata.extractFields,
+                customSystemPrompt: metadata.customSystemPrompt,
+                customUserPrompt:   metadata.customUserPrompt
+                  ? parseVariables(metadata.customUserPrompt, currentElements)
+                  : undefined,
+                ...(metadata.apiKey && { apiKey: metadata.apiKey }),
+              }),
+              signal,
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || "AI request failed");
+            nodeResultData = { output: data.output, raw: data.raw, operation: data.operation };
+            toast.success(`AI: done`);
+          } else if (nodeType === "Condition") {
+            const metadata = (node.data?.metadata || {}) as Record<string, any>;
+            const conditions = metadata.conditions || [];
+            const rootLogic = metadata.rootLogic || "AND";
+            const passed = evaluateCondition(conditions, rootLogic, currentElements);
+            nodeResultData = { result: passed, conditions, rootLogic };
+            toast.info(`Condition: ${passed ? "✓ true — continuing" : "✗ false — skipping branch"}`);
+            if (!passed) {
+              // Mark all false-branch nodes as skipped
+              const toSkip = getFalseBranchIds(nodeId);
+              toSkip.forEach((id) => skippedNodes.add(id));
+            }
+          } else if (nodeType === "Key-Value Storage") {
+            const metadata = (node.data?.metadata || {}) as Record<string, any>;
+            const action = metadata.action || "get";
+            const key = parseVariables(metadata.key || "", currentElements);
+            const value = parseVariables(metadata.value || "", currentElements);
+            if (!key) throw new Error("KV Storage: key is required");
+            let result: any;
+            if (action === "get") {
+              const res = await fetch(`/api/kv?key=${encodeURIComponent(key)}`);
+              result = await res.json();
+            } else if (action === "delete") {
+              const res = await fetch(`/api/kv?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+              result = await res.json();
+            } else {
+              const res = await fetch("/api/kv", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ key, value, action, incrementBy: action === "increment" ? Number(value) || 1 : undefined }),
+              });
+              result = await res.json();
+            }
+            if (result.error) throw new Error(`KV Storage: ${result.error}`);
+            nodeResultData = result;
+            toast.success(`KV Storage: ${action} '${key}' done`);
+          } else if (nodeType === "Data Transform") {
+            const metadata = (node.data?.metadata || {}) as Record<string, any>;
+            const operation = metadata.operation || "merge";
+            const rawInput = parseVariables(metadata.inputData || "", currentElements);
+            const rawParam = parseVariables(metadata.param1 || "", currentElements);
+            const safeJson = (s: string, fb: any = {}) => { try { return JSON.parse(s); } catch { return fb; } };
+            const input = safeJson(rawInput);
+            let output: any;
+            switch (operation) {
+              case "pick": {
+                const keys = rawParam.split(",").map((k: string) => k.trim());
+                output = keys.reduce((obj: any, k: string) => { if (k in input) obj[k] = input[k]; return obj; }, {});
+                break;
+              }
+              case "omit": {
+                const keys = rawParam.split(",").map((k: string) => k.trim());
+                output = { ...input };
+                keys.forEach((k: string) => delete output[k]);
+                break;
+              }
+              case "merge":
+                output = { ...input, ...safeJson(rawParam) };
+                break;
+              case "json_stringify":
+                output = JSON.stringify(input);
+                break;
+              case "json_parse":
+                output = JSON.parse(typeof input === "string" ? input : JSON.stringify(input));
+                break;
+              default:
+                throw new Error(`Data Transform: unknown operation '${operation}'`);
+            }
+            nodeResultData = { result: output };
+            toast.success(`Data Transform: ${operation} done`);
+          } else if (nodeType === "Google Calendar") {
+            const metadata = (node.data?.metadata || {}) as Record<string, any>;
+            const { testGoogleCalendarStep } = await import(
+              "../../../../connections/_actions/google-connection"
+            );
+            const action = metadata.action || "create_event";
+            toast.info(`Google Calendar: executing ${action}...`);
+            const res = await testGoogleCalendarStep(action, metadata as any);
+            if (!res.success) throw new Error(res.error || "Google Calendar action failed");
+            nodeResultData = res.data;
+            toast.success(`Google Calendar: done`);
           } else if (nodeType === "HTTP Request") {
             const metadata = (node.data?.metadata || {}) as Record<string, any>;
             const method  = metadata.method || "GET";
@@ -537,6 +679,8 @@ const EditorHeader = () => {
 
       if (allSuccess) {
         const creditResult = await deductCredit();
+        const durationMs = Date.now() - runStart;
+        await onCreateWorkflowLog(workflowId, "success", "Workflow completed successfully", [], durationMs);
         if (creditResult.error) {
           toast.warning(`Workflow completed but ${creditResult.error}`);
         } else if (creditResult.remaining !== undefined) {
@@ -545,13 +689,14 @@ const EditorHeader = () => {
           toast.success("Workflow run completed successfully!");
         }
       } else {
+        await onCreateWorkflowLog(workflowId, "error", "Workflow run failed", [], Date.now() - runStart);
         toast.error("Workflow run failed. Fix errors and try again.");
       }
     } finally {
       abortRef.current = null;
       dispatch({ type: "SET_RUNNING", payload: { running: false } });
     }
-  }, [onFlowAutomation, getExecutionOrder, dispatch, state.editor.elements]);
+  }, [onFlowAutomation, getExecutionOrder, getFalseBranchIds, dispatch, state.editor.elements]);
 
   const onStopWorkflow = useCallback(() => {
     abortRef.current?.abort();

@@ -10,9 +10,9 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const connection = await db.connection.findFirst({
+  const connection = await db.connections.findFirst({
     where: {
-      userId: Number(user.id),
+      userId: String(user.id),
       provider: "google",
       status: "active",
     },
@@ -31,9 +31,10 @@ export async function GET() {
     `${process.env.BASE_URL}/api/oauth/google/callback`
   );
 
+  const settings = (connection.settings || {}) as Record<string, any>;
   oauth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken || undefined,
+    access_token: settings.accessToken,
+    refresh_token: settings.refreshToken || undefined,
   });
 
   const drive = google.drive({
@@ -57,7 +58,7 @@ export async function GET() {
       requestBody: {
         id: channelId,
         type: "web_hook",
-        address: `${process.env.NGROK_URI}/api/drive-activity/notification`,
+    address: `${process.env.NEXT_PUBLIC_URL || process.env.BASE_URL}/api/drive-activity/notifications`,
         kind: "api#channel",
       },
     });

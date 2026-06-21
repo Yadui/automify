@@ -74,13 +74,8 @@ export const DiscordWizard = () => {
     setMaxStep(restored);
   }, [selectedNode?.id]);
 
-  // Fetch webhook info on mount and when step changes
-  const hasFetchedRef = React.useRef(false);
-
+  // Fetch webhook info whenever the selected node changes
   useEffect(() => {
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
-
     const fetchWebhook = async () => {
       setLoading(true);
       try {
@@ -88,7 +83,6 @@ export const DiscordWizard = () => {
         if (info && info.url && !info.needsReconnect) {
           setWebhookInfo(info as any);
         } else if (info?.needsReconnect) {
-          // Invalid old connection - user needs to reconnect
           setWebhookInfo(null);
           toast.error(
             "Discord connection expired. Please reconnect to get a new webhook."
@@ -100,7 +94,7 @@ export const DiscordWizard = () => {
       setLoading(false);
     };
     fetchWebhook();
-  }, []);
+  }, [selectedNode?.id]);
 
   const updateConfig = (key: string, value: any) => {
     const newConfig = { ...config, [key]: value };
@@ -153,9 +147,13 @@ export const DiscordWizard = () => {
 
       if (result.message === "success") {
         setTestResult({
-          success: true,
+          // Keys match node-outputs.ts Discord definition
+          id: `mock_${Date.now()}`,
+          channel_id: webhookInfo?.name || "discord-channel",
+          content: parsedMessage,
+          author: { username: "Automify", bot: true },
+          // Extra display-only fields
           webhookName: webhookInfo?.name || "Discord Channel",
-          message: parsedMessage,
           sentAt: new Date().toISOString(),
         });
         toast.success("Test message sent to Discord!");

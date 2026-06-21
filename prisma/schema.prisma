@@ -123,9 +123,15 @@ model Connections {
   id               String          @id @default(uuid())
   type             String
   provider         String?
+  providerAccountId String?
   status           String?
+  accessToken      String?
+  refreshToken     String?
+  expiresAt        DateTime?
+  scopes           String?
   createdAt        DateTime        @default(now())
   settings         Json            @default("{}")
+  metadata         Json            @default("{}")
   relations        Json            @default("[]")
   nodeId           String?
   workflowId       String?
@@ -142,9 +148,9 @@ model Connections {
   googleId         String?
 
   @@unique([userId, type])
+  @@unique([userId, provider, providerAccountId])
   @@index([workflowId])
   @@index([nodeId])
-
 }
 
 model Workflows {
@@ -169,6 +175,32 @@ model Workflows {
   userId            String
 }
 
+
+model WorkflowLog {
+  id         String   @id @default(uuid())
+  workflowId String
+  userId     String
+  status     String   // "success" | "error" | "stopped"
+  message    String?
+  results    Json     @default("[]")
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([workflowId])
+  @@index([userId])
+}
+
+model KVStore {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
 
 // Add this entire model
 model Google {

@@ -219,7 +219,7 @@ export const onCreateNewPageInDatabase = async (
     auth: decryptedToken,
   });
 
-  console.log(databaseId);
+
   const response = await notion.pages.create({
     parent: {
       type: "database_id",

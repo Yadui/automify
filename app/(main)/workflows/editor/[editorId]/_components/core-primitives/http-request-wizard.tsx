@@ -76,13 +76,27 @@ const HttpRequestWizard = () => {
         .join("&");
       const finalUrl = queryString ? `${url}?${queryString}` : url;
 
+      // Safe parse body — don't throw on invalid JSON
+      let parsedBody: any = undefined;
+      if (body && ["POST", "PUT", "PATCH"].includes(method)) {
+        try {
+          parsedBody = JSON.parse(body);
+        } catch {
+          toast.error("Request body is not valid JSON");
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const start = Date.now();
       const response = await axios({
         method,
         url: finalUrl,
         headers: requestHeaders,
-        data: body ? JSON.parse(body) : undefined,
+        data: parsedBody,
         timeout: timeout * 1000,
       });
+      const duration = `${Date.now() - start}ms`;
 
       setTestResult({
         success: true,
@@ -90,7 +104,7 @@ const HttpRequestWizard = () => {
         statusText: response.statusText,
         headers: response.headers,
         body: response.data,
-        duration: "~",
+        duration,
       });
       toast.success(`Request successful: ${response.status}`);
     } catch (error: any) {
@@ -117,6 +131,10 @@ const HttpRequestWizard = () => {
       return;
     }
 
+    // Safe label — don't crash if URL is not fully valid yet
+    let hostname = url;
+    try { hostname = new URL(url).hostname; } catch { /* keep raw url */ }
+
     dispatch({
       type: "UPDATE_NODE",
       payload: {
@@ -139,7 +157,7 @@ const HttpRequestWizard = () => {
                   apiKeyValue,
                   bearerToken,
                   timeout,
-                  eventLabel: `${method} ${new URL(url).hostname}`,
+                  eventLabel: `${method} ${hostname}`,
                   sampleData: testResult
                     ? {
                         success: testResult.success,
@@ -147,10 +165,10 @@ const HttpRequestWizard = () => {
                         statusText: testResult.statusText,
                         headers: testResult.headers,
                         body: testResult.body,
-                        data: testResult.body, // Backwards compatibility for {{node.data}}
+                        data: testResult.body,
                         duration: testResult.duration,
                       }
-                    : node.data.metadata.sampleData, // Preserve existing if no new test
+                    : node.data.metadata.sampleData,
                 },
               },
             };
@@ -297,7 +315,7 @@ const HttpRequestWizard = () => {
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Test Request
         </Button>
-        <Button onClick={handleSave} disabled={!testResult} className="flex-1">
+        <Button onClick={handleSave} disabled={!url} className="flex-1">
           Save
         </Button>
       </div>

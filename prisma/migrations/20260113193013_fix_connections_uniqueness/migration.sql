@@ -6,7 +6,7 @@
 
 */
 -- DropIndex
-DROP INDEX "Connections_type_key";
+DROP INDEX IF EXISTS "Connections_type_key";
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Connections_userId_type_key" ON "Connections"("userId", "type");

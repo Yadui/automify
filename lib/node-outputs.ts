@@ -2,6 +2,11 @@ export const NODE_OUTPUTS: Record<
   string,
   { label: string; value: string; type: string }[]
 > = {
+  AI: [
+    { label: "Output", value: "output", type: "any" },
+    { label: "Raw text", value: "raw", type: "string" },
+    { label: "Operation", value: "operation", type: "string" },
+  ],
   "HTTP Request": [
     { label: "Status Code", value: "statusCode", type: "number" },
     { label: "Response Body", value: "body", type: "object" },
@@ -57,5 +62,13 @@ export const NODE_OUTPUTS: Record<
     { label: "State", value: "state", type: "string" },
     { label: "Repository", value: "repo", type: "string" },
     { label: "Labels", value: "labels", type: "string[]" },
+  ],
+  "Google Calendar": [
+    { label: "Event ID", value: "id", type: "string" },
+    { label: "Event Link", value: "htmlLink", type: "string" },
+    { label: "Title", value: "summary", type: "string" },
+    { label: "Start", value: "start", type: "string" },
+    { label: "End", value: "end", type: "string" },
+    { label: "Status", value: "status", type: "string" },
   ],
 };

@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     await db.connections.upsert({
       where: {
         userId_provider_providerAccountId: {
-          userId: Number(user.id),
+          userId: String(user.id),
           provider: "slack",
           providerAccountId: tokens.team.id,
         },
@@ -68,10 +68,15 @@ export async function GET(request: Request) {
       update: {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token || undefined,
-        expiresAt: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000)
-          : undefined,
+        expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
         scopes: tokens.scope || undefined,
+        settings: {
+          accessToken: tokens.access_token,
+          teamName: tokens.team.name,
+          botUserId: tokens.bot_user_id,
+          authedUserId: tokens.authed_user?.id,
+          appId: tokens.app_id,
+        },
         metadata: {
           teamName: tokens.team.name,
           botUserId: tokens.bot_user_id,
@@ -81,15 +86,21 @@ export async function GET(request: Request) {
         status: "active",
       },
       create: {
-        userId: Number(user.id),
+        userId: String(user.id),
+        type: "Slack",
         provider: "slack",
         providerAccountId: tokens.team.id,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
-        expiresAt: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000)
-          : undefined,
+        expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
         scopes: tokens.scope,
+        settings: {
+          accessToken: tokens.access_token,
+          teamName: tokens.team.name,
+          botUserId: tokens.bot_user_id,
+          authedUserId: tokens.authed_user?.id,
+          appId: tokens.app_id,
+        },
         metadata: {
           teamName: tokens.team.name,
           botUserId: tokens.bot_user_id,

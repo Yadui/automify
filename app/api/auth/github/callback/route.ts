@@ -90,20 +90,23 @@ export async function GET(request: Request) {
     await db.connections.upsert({
       where: {
         userId_provider_providerAccountId: {
-          userId: user.id,
+          userId: String(user.appId),
           provider: "github",
           providerAccountId: githubUser.id.toString(),
         },
       },
       update: {
         accessToken: access_token,
+        settings: { accessToken: access_token },
         status: "active",
       },
       create: {
-        userId: user.id,
+        userId: String(user.appId),
+        type: "GitHub",
         provider: "github",
         providerAccountId: githubUser.id.toString(),
         accessToken: access_token,
+        settings: { accessToken: access_token },
         status: "active",
       },
     });

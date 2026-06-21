@@ -14,9 +14,9 @@ const DashboardStats = async ({ userId }: DashboardStatsProps) => {
 
   try {
     const [tw, aw, tc] = await Promise.all([
-      db.workflow.count({ where: { userId } }),
-      db.workflow.count({ where: { userId, publish: true } }),
-      db.connection.count({ where: { userId } }),
+      db.workflows.count({ where: { userId: String(userId) } }),
+      db.workflows.count({ where: { userId: String(userId), publish: true } }),
+      db.connections.count({ where: { userId: String(userId) } }),
     ]);
     totalWorkflows = tw;
     activeWorkflows = aw;

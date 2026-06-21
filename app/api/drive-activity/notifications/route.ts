@@ -2,148 +2,89 @@ import { postContentToWebHook } from "@/app/(main)/connections/_actions/discord-
 import { onCreateNewPageInDatabase } from "@/app/(main)/connections/_actions/notion-connection";
 import { postMessageToSlack } from "@/app/(main)/connections/_actions/slack-connection";
 import db from "@/lib/db";
-import axios from "axios";
 import { headers } from "next/headers";
 
+// This route receives Google Drive push-notification pings (x-goog-resource-id header).
+// It must be exported as POST (App Router) — the old `export default handler` never ran.
+export async function POST() {
+  const headersList = await headers();
+  const channelResourceId = headersList.get("x-goog-resource-id");
 
-export default async function handler() {
-  console.log("🔴 Changed");
-  const headersList = headers();
-  let channelResourceId;
-  headersList.forEach((value, key) => {
-    if (key == "x-goog-resource-id") {
-      channelResourceId = value;
-    }
+  if (!channelResourceId) {
+    return Response.json({ message: "no resource id" }, { status: 200 });
+  }
+
+  const user = await db.user.findFirst({
+    where: { googleResourceId: channelResourceId },
+    select: { appId: true, credits: true },
   });
 
-  if (channelResourceId) {
-    const user = await db.user.findFirst({
-      where: {
-        googleResourceId: channelResourceId,
-      },
-      select: { appId: true, credits: true },
-    });
-    if (!user) {
-      return Response.json({ message: "User not found" }, { status: 404 });
+  if (!user) {
+    return Response.json({ message: "user not found" }, { status: 404 });
+  }
+
+  if (parseInt(user.credits!) <= 0 && user.credits !== "Unlimited") {
+    return Response.json({ message: "no credits" }, { status: 200 });
+  }
+
+  const workflows = await db.workflows.findMany({
+    where: { userId: user.appId, publish: true },
+  });
+
+  for (const flow of workflows) {
+    if (!flow.flowPath) continue;
+
+    const flowPath: string[] = JSON.parse(flow.flowPath);
+    // Iterate over a copy — remove executed items by index (not by value)
+    let i = 0;
+    while (i < flowPath.length) {
+      const step = flowPath[i];
+
+      if (step === "Discord") {
+        const webhook = await db.discordWebhook.findFirst({
+          where: { userId: flow.userId },
+          select: { url: true },
+        });
+        if (webhook) {
+          await postContentToWebHook(flow.discordTemplate || "", webhook.url);
+        }
+        flowPath.splice(i, 1); // remove by index
+        continue; // don't increment — next item shifts into position i
+      }
+
+      if (step === "Slack") {
+        const channels = flow.slackChannels.map((ch) => ({ label: "", value: ch }));
+        await postMessageToSlack(
+          flow.slackAccessToken || "",
+          channels,
+          flow.slackTemplate || "",
+        );
+        flowPath.splice(i, 1);
+        continue;
+      }
+
+      if (step === "Notion") {
+        await onCreateNewPageInDatabase(
+          flow.notionDbId || "",
+          flow.notionAccessToken || "",
+          JSON.parse(flow.notionTemplate || "{}"),
+        );
+        flowPath.splice(i, 1);
+        continue;
+      }
+
+      // Unknown step — skip
+      i++;
     }
 
-    if (parseInt(user.credits!) > 0 || user.credits == "Unlimited") {
-      const workflow = await db.workflows.findMany({
-        where: {
-          userId: user.appId,
-        },
+    // Deduct credit after executing the workflow
+    if (user.credits !== "Unlimited") {
+      await db.user.update({
+        where: { appId: user.appId },
+        data: { credits: `${parseInt(user.credits!) - 1}` },
       });
-      if (workflow) {
-        workflow.map(async (flow) => {
-          const flowPath = JSON.parse(flow.flowPath!);
-          let current = 0;
-          while (current < flowPath.length) {
-            if (flowPath[current] == "Discord") {
-              const discordMessage = await db.discordWebhook.findFirst({
-                where: {
-                  userId: flow.userId,
-                },
-                select: {
-                  url: true,
-                },
-              });
-              if (discordMessage) {
-                await postContentToWebHook(
-                  flow.discordTemplate!,
-                  discordMessage.url
-                );
-                flowPath.splice(flowPath[current], 1);
-              }
-            }
-            if (flowPath[current] == "Slack") {
-              const channels = flow.slackChannels.map((channel) => {
-                return {
-                  label: "",
-                  value: channel,
-                };
-              });
-              await postMessageToSlack(
-                flow.slackAccessToken!,
-                channels,
-                flow.slackTemplate!
-              );
-              flowPath.splice(flowPath[current], 1);
-            }
-            if (flowPath[current] == "Notion") {
-              await onCreateNewPageInDatabase(
-                flow.notionDbId!,
-                flow.notionAccessToken!,
-                JSON.parse(flow.notionTemplate!)
-              );
-              flowPath.splice(flowPath[current], 1);
-            }
-
-            if (flowPath[current] == "Wait") {
-              const res = await axios.put(
-                "https://api.cron-job.org/jobs",
-                {
-                  job: {
-                    url: `${process.env.NGROK_URI}?flow_id=${flow.id}`,
-                    enabled: "true",
-                    schedule: {
-                      timezone: "Europe/Istanbul",
-                      expiresAt: 0,
-                      hours: [-1],
-                      mdays: [-1],
-                      minutes: ["*****"],
-                      months: [-1],
-                      wdays: [-1],
-                    },
-                  },
-                },
-                {
-                  headers: {
-                    Authorization: `Bearer ${process.env.CRON_JOB_KEY!}`,
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
-              if (res) {
-                flowPath.splice(flowPath[current], 1);
-                const cronPath = await db.workflows.update({
-                  where: {
-                    id: flow.id,
-                  },
-                  data: {
-                    cronPath: JSON.stringify(flowPath),
-                  },
-                });
-                if (cronPath) break;
-              }
-              break;
-            }
-            current++;
-          }
-
-          if (user.credits !== "Unlimited") {
-            await db.user.update({
-              where: { appId: user.appId },
-              data: { credits: `${parseInt(user.credits!) - 1}` },
-            });
-          }
-        });
-        return Response.json(
-          {
-            message: "flow completed",
-          },
-          {
-            status: 200,
-          }
-        );
-      }
     }
   }
-  return Response.json(
-    {
-      message: "success",
-    },
-    {
-      status: 200,
-    }
-  );
+
+  return Response.json({ message: "flow completed" }, { status: 200 });
 }

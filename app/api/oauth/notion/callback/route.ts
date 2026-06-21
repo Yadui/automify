@@ -43,8 +43,6 @@ export async function GET(request: Request) {
     const redirectUri =
       process.env.NOTION_REDIRECT_URI || `${baseUrl}/api/oauth/notion/callback`;
 
-    console.log("[notion/callback] Token exchange redirect_uri:", redirectUri);
-
     const response = await axios.post(
       "https://api.notion.com/v1/oauth/token",
       { grant_type: "authorization_code", code, redirect_uri: redirectUri },
@@ -96,7 +94,6 @@ export async function GET(request: Request) {
       });
     }
 
-    console.log("[notion/callback] Connection saved for", userAppId);
     return NextResponse.redirect(`${baseUrl}${returnUrl}`);
   } catch (error: any) {
     console.error("Notion OAuth Callback Error:", error?.response?.data || error);

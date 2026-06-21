@@ -158,4 +158,24 @@ export const EditorCanvasDefaultCardTypes = {
     description: "Delay the next action step by using the wait timer.",
     type: "Action",
   },
+  "HTTP Request": {
+    description: "Call any external API with GET, POST, PUT, PATCH or DELETE.",
+    type: "Action",
+  },
+  "Data Transform": {
+    description: "Merge, pick, omit or reshape JSON objects between steps.",
+    type: "Action",
+  },
+  "Key-Value Storage": {
+    description: "Persist and retrieve data across workflow runs.",
+    type: "Action",
+  },
+  "Toast Message": {
+    description: "Show a notification message during workflow execution.",
+    type: "Action",
+  },
+  End: {
+    description: "Mark the end of a workflow branch.",
+    type: "Action",
+  },
 };
